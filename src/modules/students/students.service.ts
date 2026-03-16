@@ -248,17 +248,17 @@ export class StudentsService {
     }
   }
 
-  async getMyProfile(id: number) {
-      const student = await this.prisma.student.findUnique({
-        where: { id }
-      })
-      if (!student) {
-        throw new NotFoundException('Student not found')
-      }
-      return {
-        success: true,
-        data: student
-      }
+  async getMyProfile(currentUser: { id: number }) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: currentUser.id }
+    })
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+    return {
+      success: true,
+      data: student
+    };
   }
 
   async deleteStudentById(studentId: number, currentUser: { id: number }) {
