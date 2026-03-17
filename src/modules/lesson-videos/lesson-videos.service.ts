@@ -31,12 +31,14 @@ export class LessonVideosService {
             id: true,
             file: true,
             lessonId: true,
+        created_at: true,
             lesson: {
                 select: {
-                    title: true
+            title: true,
+            created_at: true,
                 }
             }
-        } 
+      }
 
     })
     return {

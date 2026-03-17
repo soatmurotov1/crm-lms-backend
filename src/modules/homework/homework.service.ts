@@ -181,6 +181,26 @@ export class HomeworkService {
       select: {
         id: true,
         title: true,
+        lessonId: true,
+        file: true,
+        durationTime: true,
+        created_at: true,
+        lesson: {
+          select: {
+            id: true,
+            title: true,
+            created_at: true,
+          },
+        },
+        _count: {
+          select: {
+            homeworkResponses: true,
+            homeworkResults: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'desc',
       },
     });
 
@@ -231,6 +251,7 @@ export class HomeworkService {
       data: {
         title: payload.title,
         file: filename,
+        durationTime: payload.durationTime ?? 16,
         groupId: payload.groupId,
         lessonId: payload.lessonId,
         teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
@@ -310,6 +331,7 @@ export class HomeworkService {
         title: payload.title,
         groupId: payload.groupId,
         lessonId: payload.lessonId,
+        durationTime: payload.durationTime,
         file: filename ?? undefined,
       },
     });
@@ -331,5 +353,37 @@ export class HomeworkService {
     }
 
     return this.updateHomework(homeworkId, payload, currentUser, filename);
+  }
+
+  async deleteHomework(
+    homeworkId: number,
+    currentUser: { id: number; role: Role },
+  ) {
+    const existHomework = await this.prisma.homework.findUnique({
+      where: { id: homeworkId },
+      select: { id: true, teacherId: true },
+    });
+
+    if (!existHomework) {
+      throw new NotFoundException('Homework not found with this id');
+    }
+
+    if (
+      currentUser.role === Role.TEACHER &&
+      existHomework.teacherId !== currentUser.id
+    ) {
+      throw new ForbiddenException('Bu sening homeworking emas');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.homeworkResult.deleteMany({ where: { homeworkId } }),
+      this.prisma.homeworkResponse.deleteMany({ where: { homeworkId } }),
+      this.prisma.homework.delete({ where: { id: homeworkId } }),
+    ]);
+
+    return {
+      success: true,
+      message: 'Homework deleted successfully',
+    };
   }
 }

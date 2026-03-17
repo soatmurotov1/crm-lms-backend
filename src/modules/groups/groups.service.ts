@@ -82,6 +82,14 @@ export class GroupsService {
 
     const groups = await this.prisma.group.findMany({
       where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
     });
 
     return {

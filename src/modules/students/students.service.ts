@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -230,6 +234,10 @@ export class StudentsService {
       data.birth_date = new Date(payload.birth_date);
     }
 
+    if (payload.status !== undefined) {
+      data.status = payload.status;
+    }
+
     if (file) {
       data.photo = await this.cloudinaryService.uploadFile(file, 'students');
     }
@@ -245,38 +253,38 @@ export class StudentsService {
     return {
       success: true,
       message: 'Student updated successfully',
-    }
+    };
   }
 
   async getMyProfile(currentUser: { id: number }) {
     const student = await this.prisma.student.findUnique({
-      where: { id: currentUser.id }
-    })
+      where: { id: currentUser.id },
+    });
     if (!student) {
       throw new NotFoundException('Student not found');
     }
     return {
       success: true,
-      data: student
+      data: student,
     };
   }
 
   async deleteStudentById(studentId: number, currentUser: { id: number }) {
-  const student = await this.prisma.student.findUnique({
-    where: { id: studentId }
-  })
-  if (!student) {
-    throw new NotFoundException('Student not found');
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+    if (student.id === currentUser.id) {
+      throw new ForbiddenException("You can't delete your own account");
+    }
+    await this.prisma.student.delete({
+      where: { id: studentId },
+    });
+    return {
+      success: true,
+      message: 'Student successfully deleted',
+    };
   }
-  if (student.id === currentUser.id) {
-    throw new ForbiddenException("You can't delete your own account")
-  }
-  await this.prisma.student.delete({
-    where: { id: studentId }
-  })
-  return {  
-    success: true,
-    message: 'Student successfully deleted'
-  };
-}
 }

@@ -11,6 +11,7 @@ import {
   Query,
   ParseIntPipe,
   Put,
+  Delete,
 } from '@nestjs/common';
 import { HomeworkService } from './homework.service';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
@@ -79,6 +80,7 @@ export class HomeworkController {
         title: { type: 'string' },
         groupId: { type: 'number' },
         lessonId: { type: 'number' },
+        durationTime: { type: 'number', example: 16, nullable: true },
         file: { type: 'string', format: 'binary', nullable: true },
       },
     },
@@ -110,6 +112,7 @@ export class HomeworkController {
         title: { type: 'string' },
         groupId: { type: 'number' },
         lessonId: { type: 'number' },
+        durationTime: { type: 'number', example: 16, nullable: true },
         file: { type: 'string', format: 'binary', nullable: true },
       },
     },
@@ -147,6 +150,7 @@ export class HomeworkController {
         title: { type: 'string' },
         groupId: { type: 'number' },
         lessonId: { type: 'number' },
+        durationTime: { type: 'number', example: 16, nullable: true },
         file: { type: 'string', format: 'binary', nullable: true },
       },
     },
@@ -174,5 +178,18 @@ export class HomeworkController {
       req['user'],
       fileUrl,
     );
+  }
+
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`,
+  })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN, Role.TEACHER)
+  @Delete(':homeworkId')
+  deleteHomework(
+    @Param('homeworkId', ParseIntPipe) homeworkId: number,
+    @Req() req: Request,
+  ) {
+    return this.homeworkService.deleteHomework(homeworkId, req['user']);
   }
 }

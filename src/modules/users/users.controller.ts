@@ -94,6 +94,7 @@ export class UsersController {
       properties: {
         fullName: { type: 'string' },
         email: { type: 'string' },
+        role: { type: 'string', enum: Object.values(Role) },
         position: { type: 'string' },
         address: { type: 'string', nullable: true },
         photo: { type: 'string', format: 'binary', nullable: true },

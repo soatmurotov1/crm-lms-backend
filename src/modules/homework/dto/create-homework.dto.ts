@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer'
 
 export class CreateHomeworkDto {
@@ -19,4 +19,10 @@ export class CreateHomeworkDto {
   @IsNumber()
   @IsNotEmpty()
   lessonId: number
+
+  @ApiProperty({ example: 16, required: false })
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  durationTime?: number
 }

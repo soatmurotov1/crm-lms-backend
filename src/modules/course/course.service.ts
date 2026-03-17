@@ -1,4 +1,5 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Status } from '@prisma/client';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -57,10 +58,26 @@ export class CourseService {
   }
 
   async deleteCourseById(id: number) {
-    await this.prisma.course.update({
+    const existingCourse = await this.prisma.course.findUnique({
       where: { id },
-      data: { status: 'INACTIVE' },
+      select: { id: true, status: true },
     });
+
+    if (!existingCourse || existingCourse.status === Status.INACTIVE) {
+      throw new NotFoundException('Course not found');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.group.updateMany({
+        where: { courseId: id, status: Status.ACTIVE },
+        data: { status: Status.INACTIVE },
+      }),
+      this.prisma.course.update({
+        where: { id },
+        data: { status: Status.INACTIVE },
+      }),
+    ]);
+
     return {
       success: true,
       message: 'Course deleted',
