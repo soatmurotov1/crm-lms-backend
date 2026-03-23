@@ -11,7 +11,7 @@ export class MailerService {
             to: email,
             subject:"CRM tizimiga kirish",
             template:"index",
-            context:{text:`email : ${login}\nparol : ${password}`}
+            context:{text:`login : ${login}\nparol : ${password}`}
         })
     }
 }

@@ -62,6 +62,20 @@ export class GroupsService {
       throw new ForbiddenException('Bu sening guruhing emas');
     }
 
+    if (currentUser.role === Role.STUDENT) {
+      const studentInGroup = await this.prisma.studentGroup.findFirst({
+        where: {
+          groupId,
+          studentId: currentUser.id,
+          status: Status.ACTIVE,
+        },
+      });
+
+      if (!studentInGroup) {
+        throw new ForbiddenException('Bu sening guruhing emas');
+      }
+    }
+
     const lessons = await this.prisma.lesson.findMany({
       where: {
         groupId,
@@ -75,6 +89,48 @@ export class GroupsService {
   }
 
   async getAllGroup(currentUser: { id: number; role: Role }) {
+    if (currentUser?.role === Role.STUDENT) {
+      const studentGroups = await this.prisma.studentGroup.findMany({
+        where: {
+          studentId: currentUser.id,
+          status: Status.ACTIVE,
+          group: {
+            status: Status.ACTIVE,
+          },
+        },
+        include: {
+          group: {
+            include: {
+              course: {
+                select: {
+                  id: true,
+                  name: true,
+                  durationLesson: true,
+                },
+              },
+              teacher: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
+              },
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        success: true,
+        data: studentGroups.map((item) => item.group),
+      };
+    }
+
     const whereClause =
       currentUser?.role === Role.TEACHER
         ? { status: 'ACTIVE' as const, teacherId: currentUser.id }

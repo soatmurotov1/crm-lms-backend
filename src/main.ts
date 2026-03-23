@@ -5,12 +5,25 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const corsOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
-    : ['http://localhost:5173', 'https://crm-lms-front.netlify.app'];
+  const normalizeOrigin = (origin: string) => origin.replace(/\/+$/, '');
 
+  const corsOrigins = (
+    process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+      : ['http://localhost:5173', 'https://crm-lms-frontend.vercel.app']
+  ).map(normalizeOrigin);
+
+  const allowedOrigins = new Set(corsOrigins);
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+      callback(null, allowedOrigins.has(normalizedOrigin));
+    },
     credentials: true,
   });
   app.useGlobalPipes(

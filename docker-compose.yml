@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: crm-lms-backend_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: crm-lms-backend
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crm-lms-backend"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - crm-lms-backend_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm-lms-backend_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    networks:
+      - crm-lms-backend_network
+
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: crm-lms-backend_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:root@db:5432/crm-lms-backend?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    ports:  
+      - "4040:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: sh -c "npm run db:migrate && npm run start:prod"
+    networks:
+      - crm-lms-backend_network
+
+volumes:
+  postgres_data:
+
+networks:
+  crm-lms-backend_network:
+    driver: bridge

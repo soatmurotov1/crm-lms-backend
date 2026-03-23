@@ -1,7 +1,24 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { Role } from '@prisma/client';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
@@ -25,10 +42,10 @@ export class GroupsController {
   }
 
   @ApiOperation({
-    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`,
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}, ${Role.STUDENT}`,
   })
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
+  @Roles('ADMIN', 'SUPERADMIN', 'TEACHER', 'STUDENT')
   @Get('lesson/:groupId')
   getGroupLessons(
     @Param('groupId', ParseIntPipe) groupId: number,
@@ -37,12 +54,14 @@ export class GroupsController {
     return this.groupService.getGroupLessons(groupId, req['user']);
   }
 
-  @ApiOperation({summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}, ${Role.STUDENT}`,
+  })
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.STUDENT)
   @Get('all')
   getAllGroup(@Req() req: Request) {
-    return this.groupService.getAllGroup(req['user'])
+    return this.groupService.getAllGroup(req['user']);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -63,11 +82,11 @@ export class GroupsController {
         weekDays: {
           oneOf: [
             { type: 'array', items: { type: 'string' } },
-            { type: 'string', example: '["MONDAY","WEDNESDAY"]' }
-          ]
-        }
-      }
-    }
+            { type: 'string', example: '["MONDAY","WEDNESDAY"]' },
+          ],
+        },
+      },
+    },
   })
   @UseInterceptors(AnyFilesInterceptor())
   @Post()
@@ -95,20 +114,20 @@ export class GroupsController {
         weekDays: {
           oneOf: [
             { type: 'array', items: { type: 'string' } },
-            { type: 'string', example: '["MONDAY","WEDNESDAY"]' }
-          ]
-        }
-      }
-    }
+            { type: 'string', example: '["MONDAY","WEDNESDAY"]' },
+          ],
+        },
+      },
+    },
   })
   @UseInterceptors(AnyFilesInterceptor())
   @Put(':groupId')
   updateGroupById(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Body() payload: UpdateGroupDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
-    return this.groupService.updateGroupById(groupId, payload, req['user'])
+    return this.groupService.updateGroupById(groupId, payload, req['user']);
   }
 
   @ApiOperation({
