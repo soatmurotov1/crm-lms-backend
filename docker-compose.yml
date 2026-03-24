@@ -9,7 +9,7 @@ services:
       - "4040:3000" 
     env_file:
       - .env
-    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
     depends_on:
       db:
         condition: service_healthy
