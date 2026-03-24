@@ -1,23 +1,45 @@
-app:
-    build:
-      context: .
-      dockerfile: dockerfile
-    container_name: crm-lms-backend_app
-    restart: unless-stopped
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: crm-lms-backend-app
+    restart: always
+    ports:
+      - "4040:3000" 
     env_file:
       - .env
-    environment:
-      DATABASE_URL: postgresql://postgres:root@db:5432/crm-lms-backend?schema=public
-      REDIS_URL: redis://redis:6379
-      PORT: 3000
-    ports:  
-      - "4040:3000"
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-    command: >
-      sh -c "npx prisma migrate deploy && node dist/main.js"
-    networks:
-      - crm-lms-backend_network
+
+  db:
+    image: postgres:15-alpine
+    container_name: crm-lms-backend-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root  # .env dagi bilan bir xil bo'lishi shart
+      POSTGRES_DB: crm-lms-backend
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm-lms-backend-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

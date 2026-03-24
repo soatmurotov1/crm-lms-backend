@@ -22,23 +22,34 @@ jobs:
             set -e
 
             PROJECT_DIR="/root/crm-lms-backend"
-            REPO_URL="https://github.com/soatmurotov1/crm-lms-backend.git"
-
-            echo "Preparing project directory..."
-            mkdir -p /root
-
-            if [ ! -d "$PROJECT_DIR/.git" ]; then
-              echo "Cloning repository..."
-              git clone "$REPO_URL" "$PROJECT_DIR"
+            
+            # 1. Papka mavjudligini tekshirish
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Project directory not found. Cloning..."
+              git clone https://github.com/soatmurotov1/crm-lms-backend.git "$PROJECT_DIR"
             fi
 
             cd "$PROJECT_DIR"
-            echo "Pulling latest changes..."
-            git fetch --all
+
+            # 2. Konfliktlarni oldini olish uchun "Hard Reset"
+            echo "Cleaning up local changes and pulling latest code..."
+            git fetch origin main
             git reset --hard origin/main
 
-            echo "Stopping old containers..."
-            docker compose down --remove-orphans
+            # 3. .env fayli yo'q bo'lsa, xato bermasligi uchun yaratib qo'yish
+            # Eslatma: Haqiqiy ma'lumotlarni serverda qo'lda nano .env qilib yozishingiz kerak
+            if [ ! -f .env ]; then
+              echo "Creating temporary .env file..."
+              touch .env
+            fi
 
-            echo "Building and running containers..."
+            # 4. Docker tizimini tozalash (eski keraksiz qatlamlarni o'chirish)
+            echo "Cleaning up old docker images..."
+            docker image prune -f
+
+            # 5. Konteynerlarni qayta qurish va ishga tushirish
+            echo "Stopping old containers and starting new ones..."
+            docker compose down --remove-orphans
             docker compose up -d --build
+
+            echo "Deployment finished successfully!"
