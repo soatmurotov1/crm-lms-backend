@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MailerModule as NestMilerModule } from '@nestjs-modules/mailer';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { join } from 'path';
 
 @Module({
@@ -17,8 +16,7 @@ import { join } from 'path';
         from: `"Soatmurotov Abrorbek" <${process.env.GMAIL_USER}>`,
       },
       template: {
-        dir: join(process.cwd(), 'template'),
-        adapter: new HandlebarsAdapter(),
+        dir: join(__dirname, '../../..', 'template'),
         options: {
           strict: true,
         },
