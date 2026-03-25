@@ -6,11 +6,19 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
+  // 2. CORS sozlamalari
   app.enableCors({
-  origin: true, 
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  credentials: true,
-})
+    origin: [
+      'https://crm-lms-frontend.vercel.app', 
+      'https://abrorbek.me', 
+      'https://www.abrorbek.me',
+      'http://localhost:3000'
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,18 +32,21 @@ async function bootstrap() {
     .setDescription('CRM platform Api')
     .setVersion('1.1.1')
     .addBearerAuth()
+    .addServer('https://abrorbek.me', 'Production server') 
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
     },
   });
 
-  const PORT = process.env.PORT ?? 3000;
+  const PORT = process.env.PORT ?? 4040;
   await app.listen(PORT);
-  console.log(`Server running on port ${PORT}`);
+  
+  console.log(`🚀 Server running on: http://localhost:${PORT}/api`);
 }
 
 bootstrap();
