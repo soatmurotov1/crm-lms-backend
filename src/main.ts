@@ -7,11 +7,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const normalizeOrigin = (origin: string) => origin.replace(/\/+$/, '');
 
-  const corsOrigins = (
-    process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
-      : ['http://localhost:5173', 'https://crm-lms-frontend.vercel.app']
-  ).map(normalizeOrigin);
+  const corsOrigins = [
+    process.env.CORS_ORIGIN_LOCAL || 'http://localhost:5173',
+    process.env.CORS_ORIGIN_PRODUCTION || 'https://152.42.236.206:4040',
+    process.env.CORS_ORIGIN || 'https://crm-lms-frontend.vercel.app'
+  ].filter(Boolean)
+
 
   const allowedOrigins = new Set(corsOrigins);
   app.enableCors({
