@@ -11,10 +11,11 @@ async function bootstrap() {
   // 2. CORS sozlamalari
   app.enableCors({
     origin: [
-      'https://crm-lms-frontend.vercel.app', 
-      'https://abrorbek.me', 
+      'https://crm-lms-frontend.vercel.app',
+      'https://abrorbek.me',
       'https://www.abrorbek.me',
-      'http://localhost:3000'
+      'http://localhost:4040',
+      'http://localhost:5173'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
@@ -32,7 +33,7 @@ async function bootstrap() {
     .setDescription('CRM platform Api')
     .setVersion('1.1.1')
     .addBearerAuth()
-    .addServer('https://abrorbek.me', 'Production server') 
+    .addServer('https://abrorbek.me', 'Production server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -45,7 +46,7 @@ async function bootstrap() {
 
   const PORT = process.env.PORT ?? 4040;
   await app.listen(PORT);
-  
+
   console.log(`🚀 Server running on: http://localhost:${PORT}/api`);
 }
 
