@@ -15,7 +15,8 @@ async function bootstrap() {
       'https://abrorbek.me',
       'https://www.abrorbek.me',
       'http://localhost:4040',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'http://localhost:5174'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
@@ -44,10 +45,10 @@ async function bootstrap() {
     },
   });
 
-  const PORT = process.env.PORT ?? 4040;
-  await app.listen(PORT);
+const PORT = process.env.PORT ?? 4040;
+await app.listen(PORT, '0.0.0.0'); 
 
-  console.log(`🚀 Server running on: http://localhost:${PORT}/api`);
+console.log(`🚀 Server running on: http://0.0.0.0:${PORT}/api`);
 }
 
 bootstrap();
