@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
+  ParseIntPipe,
   Post,
   Put,
   Req,
@@ -29,6 +32,38 @@ export class HomeworkResponseController {
   constructor(
     private readonly homeworkResponseService: HomeworkResponseService,
   ) {}
+
+  @ApiOperation({ summary: `${Role.STUDENT}` })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @Get('mine/:homeworkId')
+  getMyHomeworkResponse(
+    @Param('homeworkId', ParseIntPipe) homeworkId: number,
+    @Req() req: Request,
+  ) {
+    return this.homeworkResponseService.getMyHomeworkResponse(
+      homeworkId,
+      req['user'],
+    );
+  }
+
+  @ApiOperation({
+    summary: `${Role.TEACHER}, ${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.MANAGEMENT}`,
+  })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT)
+  @Get('homework/:homeworkId/student/:studentId')
+  getStudentHomeworkResponse(
+    @Param('homeworkId', ParseIntPipe) homeworkId: number,
+    @Param('studentId', ParseIntPipe) studentId: number,
+    @Req() req: Request,
+  ) {
+    return this.homeworkResponseService.getStudentHomeworkResponse(
+      homeworkId,
+      studentId,
+      req['user'],
+    );
+  }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
   @UseGuards(AuthGuard, RolesGuard)

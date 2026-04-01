@@ -1,6 +1,22 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { LessonVideosService } from './lesson-videos.service';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/common/guard/decarator.roles';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -19,10 +35,10 @@ export class LessonVideosController {
   ) {}
 
   @ApiOperation({
-    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
+    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}, ${Role.STUDENT}`,
   })
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.STUDENT)
   @Get(':groupId')
   getLessonVideosByGroupId(
     @Param('groupId', ParseIntPipe) groupId: number,

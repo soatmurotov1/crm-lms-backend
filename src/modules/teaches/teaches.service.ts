@@ -5,6 +5,7 @@ import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateTeacherDto } from './dto/create.teachers.dto';
 import { hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class TeachersService {
@@ -63,12 +64,16 @@ export class TeachersService {
     };
   }
 
-  async updateTeacherById(id: number, payload: UpdateTeachersDto, file?: Express.Multer.File) {
+  async updateTeacherById(
+    id: number,
+    payload: UpdateTeachersDto,
+    file?: Express.Multer.File,
+  ) {
     const teacher = await this.prisma.teacher.findUnique({
-      where: { id }
-    })
+      where: { id },
+    });
     if (!teacher) {
-      throw new NotFoundException(`Not found teacherId ${id}`)
+      throw new NotFoundException(`Not found teacherId ${id}`);
     }
     let photoUrl: string | null = teacher.photo;
 
@@ -82,26 +87,56 @@ export class TeachersService {
         experience: payload.experience ? Number(payload.experience) : undefined,
         photo: photoUrl,
       },
-    })
+    });
     return {
       success: true,
       message: 'Teacher updated successfully',
-    }
+    };
   }
 
   async deleteTeacher(id: number) {
     const teacher = await this.prisma.teacher.findUnique({
-      where: { id }
-    })
+      where: { id },
+    });
     if (!teacher) {
-      throw new NotFoundException(`Not found teacherId ${id}`)
+      throw new NotFoundException(`Not found teacherId ${id}`);
     }
     await this.prisma.teacher.delete({
       where: { id },
-    })
+    });
     return {
       message: 'Teacher deleted successfully',
       id: id,
+    };
+  }
+
+  async toggleArchiveTeacher(id: number) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException(`Not found teacherId ${id}`);
+    }
+
+    const nextStatus =
+      teacher.status === UserStatus.ACTIVE
+        ? UserStatus.INACTIVE
+        : UserStatus.ACTIVE;
+
+    const updatedTeacher = await this.prisma.teacher.update({
+      where: { id },
+      data: { status: nextStatus },
+    });
+
+    return {
+      success: true,
+      message:
+        nextStatus === UserStatus.INACTIVE
+          ? 'Teacher archived successfully'
+          : 'Teacher unarchived successfully',
+      data: updatedTeacher,
     };
   }
 }

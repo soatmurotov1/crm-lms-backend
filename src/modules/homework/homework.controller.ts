@@ -41,10 +41,10 @@ export class HomeworkController {
   ) {}
 
   @ApiOperation({
-    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
+    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}, ${Role.STUDENT}`,
   })
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.STUDENT)
   @Get('group/:groupId')
   getAllHomeworkByGroup(
     @Param('groupId') groupId: number,
@@ -159,7 +159,7 @@ export class HomeworkController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.TEACHER)
   @ApiOperation({
-    summary: `${Role.TEACHER}`
+    summary: `${Role.TEACHER}`,
   })
   @Put('teacher/:homeworkId')
   async updateHomeworkByTeacher(

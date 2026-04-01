@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -30,6 +31,54 @@ export class HomeworkResultsService {
       existHomework.teacherId !== currentUser.id
     ) {
       throw new ForbiddenException('Bu sening homeworking emas');
+    }
+
+    const submittedResponse = await this.prisma.homeworkResponse.findFirst({
+      where: {
+        homeworkId: payload.homeworkId,
+        studentId: payload.studentId,
+      },
+      select: { id: true },
+    });
+
+    if (!submittedResponse) {
+      throw new BadRequestException(
+        "Bu o'quvchi hali uyga vazifa topshirmagan",
+      );
+    }
+
+    const existingResult = await this.prisma.homeworkResult.findFirst({
+      where: {
+        homeworkId: payload.homeworkId,
+        studentId: payload.studentId,
+      },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    });
+
+    if (existingResult) {
+      await this.prisma.homeworkResult.update({
+        where: {
+          id: existingResult.id,
+        },
+        data: {
+          title: payload.title,
+          score: payload.score,
+          homeworkId: payload.homeworkId,
+          studentId: payload.studentId,
+          teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
+          userId: currentUser.role === Role.STUDENT ? currentUser.id : null,
+          status:
+            payload.score >= 60
+              ? HomeworkStatus.APPROVED
+              : HomeworkStatus.REJECTED,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Homework result updated successfully',
+      };
     }
 
     await this.prisma.homeworkResult.create({
@@ -127,6 +176,20 @@ export class HomeworkResultsService {
       existHomework.teacherId !== currentUser.id
     ) {
       throw new ForbiddenException('Bu sening homeworking emas');
+    }
+
+    const submittedResponse = await this.prisma.homeworkResponse.findFirst({
+      where: {
+        homeworkId: payload.homeworkId,
+        studentId: payload.studentId,
+      },
+      select: { id: true },
+    });
+
+    if (!submittedResponse) {
+      throw new BadRequestException(
+        "Bu o'quvchi hali uyga vazifa topshirmagan",
+      );
     }
 
     await this.prisma.homeworkResult.update({

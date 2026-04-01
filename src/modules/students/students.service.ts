@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -8,11 +10,21 @@ import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateStudentDto } from './dto/create.students.dto';
-import { hashPassword } from 'src/common/bcrypt/bcrypt';
+import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateStudentDto } from './dto/update.students.dto';
+import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
+import { getImageDimensions } from './utils/image-dimension.util';
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+  private readonly maxPhotoSize = 2 * 1024 * 1024;
+  private readonly allowedPhotoMimeTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+  ];
+
   constructor(
     private prisma: PrismaService,
     private mailerService: MailerService,
@@ -136,30 +148,70 @@ export class StudentsService {
 
   async createStudent(payload: CreateStudentDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const plainPassword = payload.password.trim();
 
     if (file) {
+      this.validateStudentPhoto(file);
       photoUrl = await this.cloudinaryService.uploadFile(file, 'students');
     }
 
     await this.prisma.student.create({
       data: {
         ...payload,
-        password: await hashPassword(payload.password),
+        email: normalizedEmail,
+        password: await hashPassword(plainPassword),
         photo: photoUrl,
         birth_date: new Date(payload.birth_date),
       },
     });
 
-    await this.mailerService.sendEmail(
-      payload.email,
-      payload.email,
-      payload.password,
-    );
+    try {
+      await this.mailerService.sendEmail(
+        normalizedEmail,
+        normalizedEmail,
+        plainPassword,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Student created but email send failed: ${normalizedEmail}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return {
+        success: true,
+        emailSent: false,
+        message: 'Student yaratildi, lekin email yuborilmadi',
+      };
+    }
 
     return {
       success: true,
+      emailSent: true,
       message: 'Student successfully created',
     };
+  }
+
+  private validateStudentPhoto(file: Express.Multer.File) {
+    if (!this.allowedPhotoMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        "Rasm formati noto'g'ri. Faqat JPEG, JPG yoki PNG ruxsat etiladi",
+      );
+    }
+
+    if (file.size > this.maxPhotoSize) {
+      throw new BadRequestException('Rasm hajmi 2MB dan oshmasligi kerak');
+    }
+
+    const dimensions = getImageDimensions(file.buffer);
+    if (!dimensions) {
+      throw new BadRequestException("Rasm o'qilmadi yoki yaroqsiz fayl");
+    }
+
+    if (dimensions.width !== 500 || dimensions.height !== 500) {
+      throw new BadRequestException(
+        "Rasm o'lchami aniq 500x500 bo'lishi kerak",
+      );
+    }
   }
 
   async getAllStudents() {
@@ -259,6 +311,13 @@ export class StudentsService {
   async getMyProfile(currentUser: { id: number }) {
     const student = await this.prisma.student.findUnique({
       where: { id: currentUser.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        birth_date: true,
+        status: true,
+      },
     });
     if (!student) {
       throw new NotFoundException('Student not found');
@@ -285,6 +344,46 @@ export class StudentsService {
     return {
       success: true,
       message: 'Student successfully deleted',
+    };
+  }
+
+  async changeMyPassword(
+    currentUser: { id: number },
+    payload: ChangeStudentPasswordDto,
+  ) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const oldPasswordValid = await comparePassword(
+      payload.oldPassword,
+      student.password,
+    );
+
+    if (!oldPasswordValid) {
+      throw new BadRequestException("Amaldagi parol noto'g'ri");
+    }
+
+    if (payload.oldPassword === payload.newPassword) {
+      throw new BadRequestException(
+        "Amaldagi va yangi parol bir xil bo'lmasligi kerak",
+      );
+    }
+
+    await this.prisma.student.update({
+      where: { id: student.id },
+      data: {
+        password: await hashPassword(payload.newPassword),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Parol muvaffaqiyatli yangilandi',
     };
   }
 }

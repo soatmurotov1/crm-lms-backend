@@ -1,7 +1,24 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { TeachersService } from './teaches.service';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -39,14 +56,16 @@ export class TeachersController {
   @Post()
   createTeacher(
     @Body() payload: CreateTeacherDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.teachersService.createTeacher(payload, file)
+    return this.teachersService.createTeacher(payload, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.ADMINSTRATOR, Role.MANAGEMENT)
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`})
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`,
+  })
   @Get('all')
   getAllTeacher() {
     return this.teachersService.getAllTeachers();
@@ -54,7 +73,9 @@ export class TeachersController {
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.ADMINSTRATOR, Role.MANAGEMENT)
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}` })
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`,
+  })
   @Get(':id')
   getOneTeacher(@Param('id') id: string) {
     return this.teachersService.getOneTeacher(+id);
@@ -86,17 +107,24 @@ export class TeachersController {
   updateTeacherById(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateTeachersDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.teachersService.updateTeacherById(id, payload, file)
+    return this.teachersService.updateTeacherById(id, payload, file);
   }
-
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}`})
+  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
+  @Put(':id/archive')
+  archiveTeacher(@Param('id', ParseIntPipe) id: number) {
+    return this.teachersService.toggleArchiveTeacher(id);
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN)
+  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Delete(':id')
   async deleteTeacher(@Param('id', ParseIntPipe) id: number) {
-    return this.teachersService.deleteTeacher(id)
+    return this.teachersService.deleteTeacher(id);
   }
 }

@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
   UseInterceptors,
@@ -60,8 +61,8 @@ export class GroupsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.STUDENT)
   @Get('all')
-  getAllGroup(@Req() req: Request) {
-    return this.groupService.getAllGroup(req['user']);
+  getAllGroup(@Req() req: Request, @Query('status') status?: string) {
+    return this.groupService.getAllGroup(req['user'], status);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })

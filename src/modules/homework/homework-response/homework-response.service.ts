@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateHomeworkResponseDto } from './dto/create.response.dto';
@@ -9,6 +14,100 @@ export class HomeworkResponseService {
     private prisma: PrismaService,
     private cloudinary: CloudinaryService,
   ) {}
+
+  async getMyHomeworkResponse(homeworkId: number, currentUser: { id: number }) {
+    const existHomework = await this.prisma.homework.findUnique({
+      where: {
+        id: homeworkId,
+      },
+    });
+
+    if (!existHomework) {
+      throw new NotFoundException('Homework not found');
+    }
+
+    const response = await this.prisma.homeworkResponse.findFirst({
+      where: {
+        homeworkId,
+        studentId: currentUser.id,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+      select: {
+        id: true,
+        title: true,
+        file: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: response,
+    };
+  }
+
+  async getStudentHomeworkResponse(
+    homeworkId: number,
+    studentId: number,
+    currentUser: { id: number; role: Role },
+  ) {
+    const existHomework = await this.prisma.homework.findUnique({
+      where: {
+        id: homeworkId,
+      },
+      select: {
+        id: true,
+        teacherId: true,
+      },
+    });
+
+    if (!existHomework) {
+      throw new NotFoundException('Homework not found');
+    }
+
+    if (
+      currentUser.role === Role.TEACHER &&
+      existHomework.teacherId !== currentUser.id
+    ) {
+      throw new ForbiddenException('Bu sening homeworking emas');
+    }
+
+    const response = await this.prisma.homeworkResponse.findFirst({
+      where: {
+        homeworkId,
+        studentId,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+      select: {
+        id: true,
+        title: true,
+        file: true,
+        created_at: true,
+        updated_at: true,
+        student: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!response) {
+      throw new NotFoundException('Homework response not found');
+    }
+
+    return {
+      success: true,
+      data: response,
+    };
+  }
 
   async createHomeworkResponse(
     payload: CreateHomeworkResponseDto,

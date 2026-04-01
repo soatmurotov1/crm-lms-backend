@@ -14,6 +14,26 @@ import { UpdateGroupDto } from './dto/update-group.dto';
 export class GroupsService {
   constructor(private prisma: PrismaService) {}
 
+  private resolveStatusFilter(statusFilter?: string): Status[] {
+    const normalized = String(statusFilter || 'ACTIVE')
+      .trim()
+      .toUpperCase();
+
+    if (normalized === 'ALL') {
+      return [Status.ACTIVE, Status.FREEZE, Status.INACTIVE];
+    }
+
+    if (normalized === 'FREEZE' || normalized === 'FROZEN') {
+      return [Status.FREEZE];
+    }
+
+    if (normalized === 'INACTIVE' || normalized === 'ARCHIVE') {
+      return [Status.INACTIVE];
+    }
+
+    return [Status.ACTIVE];
+  }
+
   async getAllStudentGroupById(groupId: number) {
     const groups = await this.prisma.studentGroup.findMany({
       where: {
@@ -88,15 +108,14 @@ export class GroupsService {
     };
   }
 
-  async getAllGroup(currentUser: { id: number; role: Role }) {
+  async getAllGroup(
+    currentUser: { id: number; role: Role },
+    statusFilter?: string,
+  ) {
     if (currentUser?.role === Role.STUDENT) {
       const studentGroups = await this.prisma.studentGroup.findMany({
         where: {
           studentId: currentUser.id,
-          status: Status.ACTIVE,
-          group: {
-            status: Status.ACTIVE,
-          },
         },
         include: {
           group: {
@@ -131,10 +150,12 @@ export class GroupsService {
       };
     }
 
+    const statuses = this.resolveStatusFilter(statusFilter);
+
     const whereClause =
       currentUser?.role === Role.TEACHER
-        ? { status: 'ACTIVE' as const, teacherId: currentUser.id }
-        : { status: 'ACTIVE' as const };
+        ? { status: { in: statuses }, teacherId: currentUser.id }
+        : { status: { in: statuses } };
 
     const groups = await this.prisma.group.findMany({
       where: whereClause,
@@ -269,7 +290,6 @@ export class GroupsService {
     const existGroup = await this.prisma.group.findUnique({
       where: {
         id: groupId,
-        status: Status.ACTIVE,
       },
     });
     if (!existGroup) {

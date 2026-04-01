@@ -1,4 +1,4 @@
-import { HomeworkStatus, Role } from '@prisma/client';
+import { HomeworkStatus, Role, Status } from '@prisma/client';
 import {
   BadRequestException,
   ForbiddenException,
@@ -43,11 +43,28 @@ export class HomeworkService {
     }
 
     if (query.status === HomeworkStatus.PENDING) {
-      const homeworkResponse = await this.prisma.homeworkResponse.findMany({
+      const reviewedStudentIds = await this.prisma.homeworkResult.findMany({
         where: {
           homeworkId,
         },
         select: {
+          studentId: true,
+        },
+      });
+
+      const homeworkResponse = await this.prisma.homeworkResponse.findMany({
+        where: {
+          homeworkId,
+          studentId: {
+            notIn: reviewedStudentIds.map((item) => item.studentId),
+          },
+        },
+        select: {
+          id: true,
+          homeworkId: true,
+          studentId: true,
+          title: true,
+          created_at: true,
           student: {
             select: {
               id: true,
@@ -107,6 +124,9 @@ export class HomeworkService {
           status: HomeworkStatus.REJECTED,
         },
         select: {
+          id: true,
+          homeworkId: true,
+          studentId: true,
           student: {
             select: {
               id: true,
@@ -115,6 +135,7 @@ export class HomeworkService {
           },
           score: true,
           title: true,
+          created_at: true,
         },
       });
 
@@ -131,6 +152,9 @@ export class HomeworkService {
           status: HomeworkStatus.APPROVED,
         },
         select: {
+          id: true,
+          homeworkId: true,
+          studentId: true,
           student: {
             select: {
               id: true,
@@ -139,6 +163,7 @@ export class HomeworkService {
           },
           score: true,
           title: true,
+          created_at: true,
         },
       });
       return {
@@ -174,6 +199,21 @@ export class HomeworkService {
     ) {
       throw new ForbiddenException('Bu sening guruhing emas');
     }
+
+    if (currentUser.role === Role.STUDENT) {
+      const studentInGroup = await this.prisma.studentGroup.findFirst({
+        where: {
+          groupId,
+          studentId: currentUser.id,
+          status: Status.ACTIVE,
+        },
+      });
+
+      if (!studentInGroup) {
+        throw new ForbiddenException('Bu sening guruhing emas');
+      }
+    }
+
     const homeworks = await this.prisma.homework.findMany({
       where: {
         groupId,

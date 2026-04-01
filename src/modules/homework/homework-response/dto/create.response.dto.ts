@@ -1,14 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNumber, IsString } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateHomeworkResponseDto {
   @ApiProperty({ example: 'string' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  title: string
+  @IsNotEmpty()
+  title: string;
 
-  @ApiProperty({ example: "string"})
+  @ApiProperty({ example: 'string' })
   @IsNumber()
   @Type(() => Number)
-  homeworkId: number    
+  homeworkId: number;
 }
