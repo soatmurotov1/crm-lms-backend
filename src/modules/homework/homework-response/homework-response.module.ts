@@ -6,6 +6,6 @@ import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
 @Module({
   imports: [CloudinaryModule],
   controllers: [HomeworkResponseController],
-  providers: [HomeworkResponseService]
+  providers: [HomeworkResponseService],
 })
 export class HomeworkResponseModule {}

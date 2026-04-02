@@ -146,7 +146,11 @@ export class StudentsService {
     };
   }
 
-  async createStudent(payload: CreateStudentDto, file?: Express.Multer.File) {
+  async createStudent(
+    payload: CreateStudentDto,
+    creatorEmail: string,
+    file?: Express.Multer.File,
+  ) {
     let photoUrl: string | null = null;
     const normalizedEmail = payload.email.trim().toLowerCase();
     const plainPassword = payload.password.trim();
@@ -156,7 +160,7 @@ export class StudentsService {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'students');
     }
 
-    await this.prisma.student.create({
+    const student = await this.prisma.student.create({
       data: {
         ...payload,
         email: normalizedEmail,
@@ -168,7 +172,7 @@ export class StudentsService {
 
     try {
       await this.mailerService.sendEmail(
-        normalizedEmail,
+        creatorEmail,
         normalizedEmail,
         plainPassword,
       );

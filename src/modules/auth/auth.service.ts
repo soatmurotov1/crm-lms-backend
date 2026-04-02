@@ -29,11 +29,11 @@ export class AuthService {
     });
 
     if (!existEmail) {
-      throw new BadRequestException('Login or password wrong');
+      throw new BadRequestException('Email yoki parol xato');
     }
 
     if (!(await comparePassword(payload.password, existEmail.password))) {
-      throw new BadRequestException('Login or password wrong');
+      throw new BadRequestException('Email yoki parol xato');
     }
     const accessToken = await this.generateToken({
       id: existEmail.id,
@@ -43,7 +43,15 @@ export class AuthService {
     });
     return {
       success: true,
-      accessToken,
+      accessToken: accessToken,
+      access_token: accessToken,
+      user: {
+        id: existEmail.id,
+        email: existEmail.email,
+        fullName: existEmail.fullName,
+        role: existEmail.role,
+        position: existEmail.position,
+      },
     };
   }
 

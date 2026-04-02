@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -57,8 +58,11 @@ export class TeachersController {
   createTeacher(
     @Body() payload: CreateTeacherDto,
     @UploadedFile() file?: Express.Multer.File,
+    @Req() req?: Request,
   ) {
-    return this.teachersService.createTeacher(payload, file);
+    const creatorEmail =
+      req?.['user']?.email || process.env.DEFAULT_EMAIL || 'admin@example.com';
+    return this.teachersService.createTeacher(payload, creatorEmail, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)

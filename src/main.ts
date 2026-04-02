@@ -16,7 +16,9 @@ async function bootstrap() {
       'https://www.abrorbek.me',
       'http://localhost:4040',
       'http://localhost:5173',
-      'http://localhost:5174'
+      'http://localhost:5174',
+      'http://127.0.0.1:4040',
+      'http://127.0.0.1:3000',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
@@ -38,17 +40,17 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  
+
   SwaggerModule.setup('api', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
     },
   });
 
-const PORT = process.env.PORT ?? 4040;
-await app.listen(PORT, '0.0.0.0'); 
+  const PORT = process.env.PORT || 3000;
+  await app.listen(PORT, '0.0.0.0');
 
-console.log(`🚀 Server running on: http://0.0.0.0:${PORT}/api`);
+  console.log(`🚀 Server running on: http://0.0.0.0:${PORT}/api`);
 }
 
 bootstrap();

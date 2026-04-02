@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -87,5 +88,18 @@ export class LessonVideosController {
       req['user'],
       fileUrl,
     );
+  }
+
+  @ApiOperation({
+    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
+  })
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Delete(':id')
+  deleteLessonVideo(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+  ) {
+    return this.lessonVideosService.deleteLessonVideo(id, req['user']);
   }
 }

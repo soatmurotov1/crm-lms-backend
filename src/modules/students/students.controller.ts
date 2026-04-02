@@ -106,8 +106,11 @@ export class StudentsController {
   createStudent(
     @Body() payload: CreateStudentDto,
     @UploadedFile() file?: Express.Multer.File,
+    @Req() req?: Request,
   ) {
-    return this.studentsService.createStudent(payload, file);
+    const creatorEmail =
+      req?.['user']?.email || process.env.DEFAULT_EMAIL || 'admin@example.com';
+    return this.studentsService.createStudent(payload, creatorEmail, file);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })

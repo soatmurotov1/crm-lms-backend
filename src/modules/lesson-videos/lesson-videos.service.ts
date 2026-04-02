@@ -7,10 +7,14 @@ import {
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateLessonVideosDto } from './dto/create.lesson-videos.dto';
 import { Role, Status } from '@prisma/client';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 
 @Injectable()
 export class LessonVideosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   async getAllLessonVideosByGroup(
     groupId: number,
@@ -93,5 +97,62 @@ export class LessonVideosService {
       success: true,
       message: 'Lesson video created successfully',
     };
+  }
+
+  async deleteLessonVideo(id: number, currentUser: { id: number; role: Role }) {
+    const existing = await this.prisma.lessonVideo.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        file: true,
+        lesson: {
+          select: {
+            group: {
+              select: {
+                teacherId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Lesson video not found');
+    }
+
+    if (
+      currentUser.role === Role.TEACHER &&
+      existing.lesson?.group?.teacherId !== currentUser.id
+    ) {
+      throw new ForbiddenException('Bu sening guruhing emas');
+    }
+
+    const publicId = this.extractCloudinaryPublicId(existing.file);
+    if (publicId) {
+      try {
+        await this.cloudinaryService.deleteVideo(publicId);
+      } catch {
+        // Ignore cloud delete errors to keep database consistent.
+      }
+    }
+
+    await this.prisma.lessonVideo.delete({ where: { id } });
+
+    return {
+      success: true,
+      message: 'Lesson video deleted successfully',
+    };
+  }
+
+  private extractCloudinaryPublicId(fileUrl: string) {
+    if (!fileUrl) return null;
+    const uploadIndex = fileUrl.indexOf('/upload/');
+    if (uploadIndex === -1) return null;
+    const pathPart = fileUrl.slice(uploadIndex + '/upload/'.length);
+    const cleaned = pathPart.replace(/^v\d+\//, '');
+    const withoutQuery = cleaned.split('?')[0];
+    const withoutExt = withoutQuery.replace(/\.[^./]+$/, '');
+    return withoutExt || null;
   }
 }

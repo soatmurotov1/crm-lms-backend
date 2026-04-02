@@ -15,14 +15,18 @@ export class TeachersService {
     private cloudinaryService: CloudinaryService,
   ) {}
 
-  async createTeacher(payload: CreateTeacherDto, file?: Express.Multer.File) {
+  async createTeacher(
+    payload: CreateTeacherDto,
+    creatorEmail: string,
+    file?: Express.Multer.File,
+  ) {
     let photoUrl: string | null = null;
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'teachers');
     }
 
-    await this.prisma.teacher.create({
+    const teacher = await this.prisma.teacher.create({
       data: {
         ...payload,
         experience: Number(payload.experience),
@@ -32,7 +36,7 @@ export class TeachersService {
     });
 
     await this.mailerService.sendEmail(
-      payload.email,
+      creatorEmail,
       payload.email,
       payload.password,
     );
