@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req, ParseIntPipe, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  ParseIntPipe,
+  Put,
+  Delete,
+} from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -13,35 +24,29 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-
-  @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({
+    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
+  })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
-  @Get(":lessonId")
-  getAttendanceByLesson(@Param("lessonId", ParseIntPipe) lessonId: number) {
-    return this.attendanceService.getAttendanceByLesson(lessonId)
+  @Get(':lessonId')
+  getAttendanceByLesson(@Param('lessonId', ParseIntPipe) lessonId: number) {
+    return this.attendanceService.getAttendanceByLesson(lessonId);
   }
 
-
-  @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @Post()
-  createAttendance(
-    @Body() payload: CreateAttendanceDto,
-    @Req() req: Request
-  ) {
-    return this.attendanceService.createAttendance(payload, req["user"])
+  createAttendance(@Body() payload: CreateAttendanceDto, @Req() req: Request) {
+    return this.attendanceService.createAttendance(payload, req['user']);
   }
 
-  @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @Put()
-  updateAttendance(
-    @Body() payload: UpdateAttendanceDto,
-    @Req() req: Request
-  ) {
-    return this.attendanceService.updateAttendance(payload, req["user"])
+  updateAttendance(@Body() payload: UpdateAttendanceDto, @Req() req: Request) {
+    return this.attendanceService.updateAttendance(payload, req['user']);
   }
 }

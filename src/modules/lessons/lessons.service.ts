@@ -76,6 +76,7 @@ export class LessonsService {
       select: {
         id: true,
         title: true,
+        created_at: true,
       },
     });
     return {
@@ -88,24 +89,34 @@ export class LessonsService {
     payload: CreateLessonDto,
     currentUser: { id: number; role: Role },
   ) {
+    const { lessonDate, ...lessonPayload } = payload;
     const existGroup = await this.prisma.group.findFirst({
-      where: { id: payload.groupId, status: Status.ACTIVE },
+      where: { id: lessonPayload.groupId, status: Status.ACTIVE },
     });
 
     if (!existGroup) {
       throw new NotFoundException('Group not found with this id');
     }
 
-    await this.prisma.lesson.create({
+    const createdLesson = await this.prisma.lesson.create({
       data: {
-        ...payload,
+        ...lessonPayload,
         teacherId: currentUser.role == Role.TEACHER ? currentUser.id : null,
         userId: currentUser.role != Role.TEACHER ? currentUser.id : null,
+        ...(lessonDate ? { created_at: new Date(lessonDate) } : {}),
+      },
+      select: {
+        id: true,
+        title: true,
+        groupId: true,
+        created_at: true,
       },
     });
+
     return {
       success: true,
       message: 'Lesson created successfully',
+      data: createdLesson,
     };
   }
 

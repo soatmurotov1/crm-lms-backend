@@ -6,6 +6,9 @@ import { join } from 'path';
   imports: [
     NestMilerModule.forRoot({
       transport: {
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         service: 'gmail',
         auth: {
           user: process.env.GMAIL_USER,

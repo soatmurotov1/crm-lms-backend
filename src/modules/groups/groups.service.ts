@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role, Status } from '@prisma/client';
+import { Role, Status, UserStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
@@ -39,6 +39,9 @@ export class GroupsService {
       where: {
         groupId,
         status: Status.ACTIVE,
+        student: {
+          status: UserStatus.ACTIVE,
+        },
       },
       select: {
         id: true,
