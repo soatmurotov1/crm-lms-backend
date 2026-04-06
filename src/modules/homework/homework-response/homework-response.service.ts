@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -10,6 +11,8 @@ import { CreateHomeworkResponseDto } from './dto/create.response.dto';
 
 @Injectable()
 export class HomeworkResponseService {
+  private readonly editWindowMs = 60 * 60 * 1000;
+
   constructor(
     private prisma: PrismaService,
     private cloudinary: CloudinaryService,
@@ -124,6 +127,26 @@ export class HomeworkResponseService {
       throw new NotFoundException('Homework not found');
     }
 
+    const existingResponse = await this.prisma.homeworkResponse.findFirst({
+      where: {
+        homeworkId: payload.homeworkId,
+        studentId: currentUser.id,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+      select: {
+        id: true,
+        created_at: true,
+      },
+    });
+
+    if (existingResponse) {
+      throw new BadRequestException(
+        'Uyga vazifa allaqachon yuborilgan. Faqat 1 soat ichida tahrirlash mumkin',
+      );
+    }
+
     let fileUrl: string | undefined;
     if (file) {
       fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses');
@@ -171,6 +194,13 @@ export class HomeworkResponseService {
 
     if (!existHomeworkResponse) {
       throw new NotFoundException('Homework response not found');
+    }
+
+    const createdAt = new Date(existHomeworkResponse.created_at).getTime();
+    if (Date.now() - createdAt > this.editWindowMs) {
+      throw new BadRequestException(
+        'Uyga vazifani tahrirlash vaqti tugagan (1 soat ichida tahrirlash mumkin)',
+      );
     }
 
     let fileUrl: string | undefined;

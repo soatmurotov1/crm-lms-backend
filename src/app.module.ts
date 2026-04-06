@@ -14,6 +14,8 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { HomeworkModule } from './modules/homework/homework.module';
 import { LessonVideosModule } from './modules/lesson-videos/lesson-videos.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { LessonVideosModule } from './modules/lesson-videos/lesson-videos.module
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -34,6 +37,7 @@ import { LessonVideosModule } from './modules/lesson-videos/lesson-videos.module
     AttendanceModule,
     HomeworkModule,
     LessonVideosModule,
+    PaymentsModule,
   ],
   controllers: [],
   providers: [UserSeeder],

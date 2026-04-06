@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { HomeworkStatus, Prisma } from '@prisma/client';
 import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
@@ -113,9 +113,46 @@ export class StudentsService {
     if (!group) {
       throw new NotFoundException('Homework is Not found');
     }
+
+    const [response, result] = await Promise.all([
+      this.prisma.homeworkResponse.findFirst({
+        where: {
+          homeworkId: group.id,
+          studentId: currentUser.id,
+        },
+        orderBy: {
+          id: 'desc',
+        },
+        select: {
+          id: true,
+        },
+      }),
+      this.prisma.homeworkResult.findFirst({
+        where: {
+          homeworkId: group.id,
+          studentId: currentUser.id,
+        },
+        orderBy: {
+          id: 'desc',
+        },
+        select: {
+          id: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    const status = result?.status
+      ? result.status
+      : response
+        ? HomeworkStatus.PENDING
+        : HomeworkStatus.NOT_REVIEWED;
     return {
       success: true,
-      data: group,
+      data: {
+        ...group,
+        status,
+      },
     };
   }
 

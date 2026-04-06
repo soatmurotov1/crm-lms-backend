@@ -50,19 +50,30 @@ enum HomeworkStatus {
   REJECTED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELED
+}
+
+enum PaymentMethod {
+  PAYME
+  MANUAL
+}
+
 model User {
-  id              Int              @id @default(autoincrement())
-  fullName        String
-  email           String           @unique
-  photo           String?
-  password        String
-  position        String
-  hire_date       DateTime
-  role            Role
-  address         String?
-  status          UserStatus       @default(ACTIVE)
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  id         Int        @id @default(autoincrement())
+  fullName   String
+  email      String     @unique
+  photo      String?
+  password   String
+  position   String
+  hire_date  DateTime
+  role       Role
+  address    String?
+  status     UserStatus @default(ACTIVE)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
 
   groups          Group[]
   attendances     Attendance[]
@@ -74,16 +85,16 @@ model User {
 }
 
 model Teacher {
-  id              Int              @id @default(autoincrement())
-  fullName        String
-  email           String           @unique
-  photo           String?
-  password        String
-  position        String
-  experience      Int
-  status          UserStatus       @default(ACTIVE)
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  id         Int        @id @default(autoincrement())
+  fullName   String
+  email      String     @unique
+  photo      String?
+  password   String
+  position   String
+  experience Int
+  status     UserStatus @default(ACTIVE)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
 
   groups          Group[]
   attendances     Attendance[]
@@ -95,17 +106,18 @@ model Teacher {
 }
 
 model Student {
-  id                Int                @id @default(autoincrement())
-  fullName          String
-  email             String             @unique
-  photo             String?
-  password          String
-  birth_date        DateTime
-  status            UserStatus         @default(ACTIVE)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
+  id         Int        @id @default(autoincrement())
+  fullName   String
+  email      String     @unique
+  photo      String?
+  password   String
+  birth_date DateTime
+  status     UserStatus @default(ACTIVE)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
 
   studentGroups     StudentGroup[]
+  payments          Payment[]
   attendances       Attendance[]
   homeworkResults   HomeworkResult[]
   homeworkResponses HomeworkResponse[]
@@ -123,7 +135,8 @@ model Course {
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
 
-  groups         Group[]
+  groups   Group[]
+  payments Payment[]
 }
 
 model Room {
@@ -134,7 +147,7 @@ model Room {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  groups     Group[]
+  groups Group[]
 }
 
 model Group {
@@ -152,6 +165,7 @@ model Group {
   updated_at DateTime   @updatedAt
 
   studentGroup StudentGroup[]
+  payments     Payment[]
   teacher      Teacher        @relation(fields: [teacherId], references: [id])
   user         User           @relation(fields: [userId], references: [id])
   room         Room           @relation(fields: [roomId], references: [id])
@@ -173,7 +187,29 @@ model StudentGroup {
   user    User    @relation(fields: [userId], references: [id])
   group   Group   @relation(fields: [groupId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
+
   @@unique([groupId, studentId])
+}
+
+model Payment {
+  id         Int            @id @default(autoincrement())
+  studentId  Int
+  groupId    Int
+  courseId   Int
+  amount     Decimal
+  status     PaymentStatus  @default(PENDING)
+  method     PaymentMethod?
+  year       Int
+  month      Int
+  paidAt     DateTime?
+  created_at DateTime       @default(now())
+  updated_at DateTime       @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+  group   Group   @relation(fields: [groupId], references: [id])
+  course  Course  @relation(fields: [courseId], references: [id])
+
+  @@unique([studentId, groupId, year, month])
 }
 
 model Lesson {
@@ -244,13 +280,13 @@ model LessonVideo {
 }
 
 model HomeworkResponse {
-  id         Int                   @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   homeworkId Int
   studentId  Int
   title      String
-  file       String?  
-  created_at DateTime              @default(now())
-  updated_at DateTime              @updatedAt
+  file       String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   student  Student  @relation(fields: [studentId], references: [id])
   homework Homework @relation(fields: [homeworkId], references: [id])
@@ -285,7 +321,3 @@ model Rating {
   teacher Teacher @relation(fields: [teacherId], references: [id])
   lesson  Lesson  @relation(fields: [lessonId], references: [id])
 }
-
-
-
-
