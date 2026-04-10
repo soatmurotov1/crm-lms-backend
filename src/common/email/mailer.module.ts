@@ -7,8 +7,8 @@ import { join } from 'path';
     NestMilerModule.forRoot({
       transport: {
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        port: 587,
+        secure: false,
         service: 'gmail',
         auth: {
           user: process.env.GMAIL_USER,

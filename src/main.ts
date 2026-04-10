@@ -20,7 +20,6 @@ async function bootstrap() {
       'http://127.0.0.1:4040',
       'http://127.0.0.1:3000',
     ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 
@@ -36,7 +35,6 @@ async function bootstrap() {
     .setDescription('CRM platform Api')
     .setVersion('1.1.1')
     .addBearerAuth()
-    .addServer('https://abrorbek.me', 'Production server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -50,7 +48,7 @@ async function bootstrap() {
   const PORT = process.env.PORT || 3000;
   await app.listen(PORT, '0.0.0.0');
 
-  console.log(`🚀 Server running on: http://0.0.0.0:${PORT}/api`);
+  console.log(`🚀 Server running on: http://localhost:${PORT}/api`);
 }
 
 bootstrap();
