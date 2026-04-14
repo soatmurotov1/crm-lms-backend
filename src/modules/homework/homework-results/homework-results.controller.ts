@@ -55,6 +55,22 @@ export class HomeworkResultsController {
   }
 
   @ApiOperation({
+    summary: `${Role.STUDENT}`,
+  })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  @Get('mine/:homeworkId')
+  getMyHomeworkResult(
+    @Param('homeworkId', ParseIntPipe) homeworkId: number,
+    @Req() req: Request,
+  ) {
+    return this.homeworkResultService.getMyHomeworkResult(
+      homeworkId,
+      req['user'],
+    );
+  }
+
+  @ApiOperation({
     summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
   })
   @UseGuards(AuthGuard, RolesGuard)
@@ -63,11 +79,11 @@ export class HomeworkResultsController {
   updateHomeworkResult(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: CreateHomeworkResultsDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     return this.homeworkResultService.updateHomeworkResult(
       { ...payload, id },
-      req['user']
+      req['user'],
     );
   }
 }

@@ -12,6 +12,7 @@ import { CreateHomeworkResponseDto } from './dto/create.response.dto';
 @Injectable()
 export class HomeworkResponseService {
   private readonly editWindowMs = 60 * 60 * 1000;
+  private readonly submitWindowMs = 24 * 60 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -27,6 +28,13 @@ export class HomeworkResponseService {
 
     if (!existHomework) {
       throw new NotFoundException('Homework not found');
+    }
+
+    const createdAt = new Date(existHomework.created_at).getTime();
+    if (Date.now() - createdAt > this.submitWindowMs) {
+      throw new BadRequestException(
+        'Uyga vazifa muddati tugagan (24 soat ichida topshirish mumkin)',
+      );
     }
 
     const response = await this.prisma.homeworkResponse.findFirst({
@@ -64,6 +72,7 @@ export class HomeworkResponseService {
       select: {
         id: true,
         teacherId: true,
+        groupId: true,
       },
     });
 
@@ -75,7 +84,18 @@ export class HomeworkResponseService {
       currentUser.role === Role.TEACHER &&
       existHomework.teacherId !== currentUser.id
     ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
+      const homeworkGroup = await this.prisma.group.findUnique({
+        where: {
+          id: existHomework.groupId,
+        },
+        select: {
+          teacherId: true,
+        },
+      });
+
+      if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
+        throw new ForbiddenException('Bu sening homeworking emas');
+      }
     }
 
     const response = await this.prisma.homeworkResponse.findFirst({

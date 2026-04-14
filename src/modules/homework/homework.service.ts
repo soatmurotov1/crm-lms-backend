@@ -32,7 +32,18 @@ export class HomeworkService {
       currentUser.role === Role.TEACHER &&
       existHomework.teacherId !== currentUser.id
     ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
+      const homeworkGroup = await this.prisma.group.findUnique({
+        where: {
+          id: existHomework.groupId,
+        },
+        select: {
+          teacherId: true,
+        },
+      });
+
+      if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
+        throw new ForbiddenException('Bu sening homeworking emas');
+      }
     }
 
     if (

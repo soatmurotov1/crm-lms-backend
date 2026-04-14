@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateTeacherDto } from './dto/create.teachers.dto';
-import { hashPassword } from 'src/common/bcrypt/bcrypt';
+import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
 import { UserStatus } from '@prisma/client';
+import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
 
 @Injectable()
 export class TeachersService {
@@ -65,6 +70,31 @@ export class TeachersService {
     return {
       success: true,
       data: Teacher,
+    };
+  }
+
+  async getMyProfile(currentUser: { id: number }) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: currentUser.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        photo: true,
+        position: true,
+        experience: true,
+        status: true,
+        created_at: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    return {
+      success: true,
+      data: teacher,
     };
   }
 
@@ -141,6 +171,46 @@ export class TeachersService {
           ? 'Teacher archived successfully'
           : 'Teacher unarchived successfully',
       data: updatedTeacher,
+    };
+  }
+
+  async changeMyPassword(
+    currentUser: { id: number },
+    payload: ChangeTeacherPasswordDto,
+  ) {
+    const teacher = await this.prisma.teacher.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const oldPasswordValid = await comparePassword(
+      payload.oldPassword,
+      teacher.password,
+    );
+
+    if (!oldPasswordValid) {
+      throw new BadRequestException("Amaldagi parol noto'g'ri");
+    }
+
+    if (payload.oldPassword === payload.newPassword) {
+      throw new BadRequestException(
+        "Amaldagi va yangi parol bir xil bo'lmasligi kerak",
+      );
+    }
+
+    await this.prisma.teacher.update({
+      where: { id: teacher.id },
+      data: {
+        password: await hashPassword(payload.newPassword),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Parol muvaffaqiyatli yangilandi',
     };
   }
 }

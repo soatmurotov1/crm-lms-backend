@@ -300,6 +300,7 @@ model HomeworkResult {
   teacherId  Int?
   title      String
   file       String?
+  comment    String?
   score      Int
   status     HomeworkStatus
   created_at DateTime       @default(now())

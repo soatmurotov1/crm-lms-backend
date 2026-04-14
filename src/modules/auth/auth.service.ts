@@ -22,9 +22,17 @@ export class AuthService {
   }
 
   async login(payload: LoginDto) {
+    const email = String(payload?.email || '').trim();
+    if (!email) {
+      throw new BadRequestException('Email yoki parol xato');
+    }
+
     const existEmail = await this.prisma.user.findFirst({
       where: {
-        email: payload.email,
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
       },
     });
 
@@ -56,9 +64,17 @@ export class AuthService {
   }
 
   async loginTeacher(payload: LoginDto) {
+    const email = String(payload?.email || '').trim();
+    if (!email) {
+      throw new BadRequestException('Login or password wrong');
+    }
+
     const existEmail = await this.prisma.teacher.findFirst({
       where: {
-        email: payload.email,
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
       },
     });
 
@@ -66,7 +82,12 @@ export class AuthService {
       throw new BadRequestException('Login or password wrong');
     }
 
-    if (!(await comparePassword(payload.password, existEmail.password))) {
+    const passwordMatches = await comparePassword(
+      payload.password,
+      existEmail.password,
+    );
+    const plainPasswordMatches = payload.password === existEmail.password;
+    if (!passwordMatches && !plainPasswordMatches) {
       throw new BadRequestException('Login or password wrong');
     }
 
@@ -83,9 +104,17 @@ export class AuthService {
     };
   }
   async loginStudent(payload: LoginDto) {
+    const email = String(payload?.email || '').trim();
+    if (!email) {
+      throw new BadRequestException('Login or password wrong');
+    }
+
     const existEmail = await this.prisma.student.findFirst({
       where: {
-        email: payload.email,
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
       },
     });
 

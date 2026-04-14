@@ -63,11 +63,12 @@ export class HomeworkResultsService {
         },
         data: {
           title: payload.title,
+          comment: payload.comment ?? null,
           score: payload.score,
           homeworkId: payload.homeworkId,
           studentId: payload.studentId,
           teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
-          userId: currentUser.role === Role.STUDENT ? currentUser.id : null,
+          userId: currentUser.role !== Role.TEACHER ? currentUser.id : null,
           status:
             payload.score >= 60
               ? HomeworkStatus.APPROVED
@@ -84,11 +85,12 @@ export class HomeworkResultsService {
     await this.prisma.homeworkResult.create({
       data: {
         title: payload.title,
+        comment: payload.comment ?? null,
         score: payload.score,
         homeworkId: payload.homeworkId,
         studentId: payload.studentId,
         teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
-        userId: currentUser.role === Role.STUDENT ? currentUser.id : null,
+        userId: currentUser.role !== Role.TEACHER ? currentUser.id : null,
         status:
           payload.score >= 60
             ? HomeworkStatus.APPROVED
@@ -130,9 +132,16 @@ export class HomeworkResultsService {
       select: {
         id: true,
         title: true,
+        comment: true,
         score: true,
         status: true,
         student: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+        teacher: {
           select: {
             id: true,
             fullName: true,
@@ -198,11 +207,12 @@ export class HomeworkResultsService {
       },
       data: {
         title: payload.title,
+        comment: payload.comment ?? null,
         score: payload.score,
         homeworkId: payload.homeworkId,
         studentId: payload.studentId,
         teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
-        userId: currentUser.role === Role.STUDENT ? currentUser.id : null,
+        userId: currentUser.role !== Role.TEACHER ? currentUser.id : null,
         status:
           payload.score >= 60
             ? HomeworkStatus.APPROVED
@@ -213,6 +223,58 @@ export class HomeworkResultsService {
     return {
       success: true,
       message: 'Homework result updated successfully',
+    };
+  }
+
+  async getMyHomeworkResult(homeworkId: number, currentUser: { id: number }) {
+    const existHomework = await this.prisma.homework.findUnique({
+      where: {
+        id: homeworkId,
+      },
+      select: {
+        id: true,
+        groupId: true,
+      },
+    });
+
+    if (!existHomework) {
+      throw new NotFoundException('Homework not found');
+    }
+
+    const result = await this.prisma.homeworkResult.findFirst({
+      where: {
+        homeworkId,
+        studentId: currentUser.id,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+      select: {
+        id: true,
+        title: true,
+        comment: true,
+        score: true,
+        status: true,
+        created_at: true,
+        updated_at: true,
+        teacher: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: result || null,
     };
   }
 }

@@ -1,11 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateHomeworkResultsDto {
   @ApiProperty({ example: 'string' })
   @IsString()
   title: string;
+
+  @ApiProperty({ example: 'string', required: false })
+  @IsString()
+  @IsOptional()
+  comment?: string;
 
   @ApiProperty({ example: 1 })
   @IsInt()

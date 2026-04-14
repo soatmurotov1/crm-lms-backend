@@ -169,6 +169,25 @@ export class GroupsService {
             fullName: true,
           },
         },
+        course: {
+          select: {
+            id: true,
+            name: true,
+            durationLesson: true,
+          },
+        },
+        room: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        teacher: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
       },
     });
 

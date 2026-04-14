@@ -27,6 +27,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { CreateTeacherDto } from './dto/create.teachers.dto';
 import { Roles } from 'src/common/guard/decarator.roles';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
+import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
 
 @Controller('teachers')
 @ApiBearerAuth()
@@ -73,6 +74,14 @@ export class TeachersController {
   @Get('all')
   getAllTeacher() {
     return this.teachersService.getAllTeachers();
+  }
+
+  @ApiOperation({ summary: `${Role.TEACHER}` })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.TEACHER)
+  @Get('my/profile')
+  getMyProfile(@Req() req: Request) {
+    return this.teachersService.getMyProfile(req['user']);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -130,5 +139,16 @@ export class TeachersController {
   @Delete(':id')
   async deleteTeacher(@Param('id', ParseIntPipe) id: number) {
     return this.teachersService.deleteTeacher(id);
+  }
+
+  @ApiOperation({ summary: `${Role.TEACHER}` })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.TEACHER)
+  @Put('my/password')
+  changeMyPassword(
+    @Req() req: Request,
+    @Body() payload: ChangeTeacherPasswordDto,
+  ) {
+    return this.teachersService.changeMyPassword(req['user'], payload);
   }
 }
