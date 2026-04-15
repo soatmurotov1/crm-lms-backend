@@ -13,7 +13,6 @@ import { CreateStudentDto } from './dto/create.students.dto';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
-import { getImageDimensions } from './utils/image-dimension.util';
 
 @Injectable()
 export class StudentsService {
@@ -241,17 +240,6 @@ export class StudentsService {
 
     if (file.size > this.maxPhotoSize) {
       throw new BadRequestException('Rasm hajmi 2MB dan oshmasligi kerak');
-    }
-
-    const dimensions = getImageDimensions(file.buffer);
-    if (!dimensions) {
-      throw new BadRequestException("Rasm o'qilmadi yoki yaroqsiz fayl");
-    }
-
-    if (dimensions.width !== 500 || dimensions.height !== 500) {
-      throw new BadRequestException(
-        "Rasm o'lchami aniq 500x500 bo'lishi kerak",
-      );
     }
   }
 

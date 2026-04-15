@@ -12,6 +12,33 @@ import { HomeworkStatus, Role } from '@prisma/client';
 export class HomeworkResultsService {
   constructor(private prisma: PrismaService) {}
 
+  private async assertTeacherOwnsHomework(
+    homeworkId: number,
+    currentUser: { id: number; role: Role },
+  ) {
+    if (currentUser.role !== Role.TEACHER) return;
+
+    const homework = await this.prisma.homework.findUnique({
+      where: { id: homeworkId },
+      select: { teacherId: true, groupId: true },
+    });
+
+    if (!homework) {
+      throw new NotFoundException('Homework not found');
+    }
+
+    if (homework.teacherId === currentUser.id) return;
+
+    const homeworkGroup = await this.prisma.group.findUnique({
+      where: { id: homework.groupId },
+      select: { teacherId: true },
+    });
+
+    if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
+      throw new ForbiddenException('Bu sening homeworking emas');
+    }
+  }
+
   async createHomeworkResult(
     payload: CreateHomeworkResultsDto,
     currentUser: { id: number; role: Role },
@@ -26,12 +53,7 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    await this.assertTeacherOwnsHomework(payload.homeworkId, currentUser);
 
     const submittedResponse = await this.prisma.homeworkResponse.findFirst({
       where: {
@@ -118,12 +140,7 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    await this.assertTeacherOwnsHomework(homeworkId, currentUser);
 
     const homeworkResults = await this.prisma.homeworkResult.findMany({
       where: {
@@ -180,12 +197,7 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    await this.assertTeacherOwnsHomework(payload.homeworkId, currentUser);
 
     const submittedResponse = await this.prisma.homeworkResponse.findFirst({
       where: {

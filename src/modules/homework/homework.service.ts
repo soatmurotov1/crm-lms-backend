@@ -146,6 +146,7 @@ export class HomeworkService {
           },
           score: true,
           title: true,
+          comment: true,
           created_at: true,
         },
       });
@@ -174,6 +175,7 @@ export class HomeworkService {
           },
           score: true,
           title: true,
+          comment: true,
           created_at: true,
         },
       });
