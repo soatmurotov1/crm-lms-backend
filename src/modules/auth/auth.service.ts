@@ -32,7 +32,6 @@ export class AuthService {
     loginType: string = 'user',
   ): Promise<void> {
     try {
-      // Log to database
       await this.prisma.loginLog.create({
         data: {
           userEmail: email,

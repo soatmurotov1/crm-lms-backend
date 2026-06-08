@@ -67,7 +67,7 @@ async function bootstrap() {
   logger.log(`✅ Redis cache initialized`);
 }
 
-  console.log(`Server running on: http://localhost:${PORT}/api`);
-}
+const port = process.env.PORT || 3000;
+console.log(`Server running on: http://localhost:${port}/api`);
 
 bootstrap();
