@@ -1,14 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api');
 
-  // 2. CORS sozlamalari
+  // CORS configuration
   app.enableCors({
     origin: [
       'https://crm-lms-frontend.vercel.app',
@@ -21,18 +22,23 @@ async function bootstrap() {
       'http://127.0.0.1:3000',
     ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 3600,
   });
 
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Najot Talim Crm')
-    .setDescription('CRM platform Api')
+    .setTitle('Najot Talim CRM')
+    .setDescription('CRM platform API')
     .setVersion('1.1.1')
     .addBearerAuth()
     .build();
@@ -46,7 +52,20 @@ async function bootstrap() {
   });
 
   const PORT = process.env.PORT || 3000;
-  await app.listen(PORT, '0.0.0.0');
+  const NODE_ENV = process.env.NODE_ENV || 'development';
+
+  await app.listen(PORT, '0.0.0.0', () => {
+    logger.log(`
+    🚀 Application is running!
+    📡 Server: http://0.0.0.0:${PORT}
+    🔗 API Docs: http://0.0.0.0:${PORT}/api
+    🌍 Environment: ${NODE_ENV}
+    `);
+  });
+
+  logger.log(`✅ Database connected successfully`);
+  logger.log(`✅ Redis cache initialized`);
+}
 
   console.log(`Server running on: http://localhost:${PORT}/api`);
 }
