@@ -4,12 +4,14 @@ import { JwtService } from '@nestjs/jwt';
 import { comparePassword } from 'src/common/bcrypt/bcrypt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { Role } from '@prisma/client';
+import { TelegramService } from 'src/common/telegram/telegram.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private telegramService: TelegramService,
   ) {}
 
   private async generateToken(payload: {
@@ -21,7 +23,43 @@ export class AuthService {
     return await this.jwtService.sign(payload);
   }
 
-  async login(payload: LoginDto) {
+  private async logAndNotifyLogin(
+    email: string,
+    ipAddress: string,
+    deviceName: string,
+    location: string,
+    userAgent: string,
+    loginType: string = 'user',
+  ): Promise<void> {
+    try {
+      // Log to database
+      await this.prisma.loginLog.create({
+        data: {
+          userEmail: email,
+          ipAddress,
+          deviceName,
+          location,
+          userAgent,
+          loginType,
+          success: true,
+        },
+      });
+
+      // Send Telegram notification
+      await this.telegramService.sendLoginNotification({
+        userEmail: email,
+        ipAddress,
+        deviceName,
+        location,
+        loginType,
+        timestamp: new Date().toLocaleString('uz-UZ'),
+      });
+    } catch (error) {
+      console.error('Login logging xatosi:', error);
+    }
+  }
+
+  async login(payload: LoginDto, ipAddress: string = '') {
     const email = String(payload?.email || '').trim();
     if (!email) {
       throw new BadRequestException('Email yoki parol xato');
@@ -43,6 +81,17 @@ export class AuthService {
     if (!(await comparePassword(payload.password, existEmail.password))) {
       throw new BadRequestException('Email yoki parol xato');
     }
+
+    // Log login activity
+    await this.logAndNotifyLogin(
+      existEmail.email,
+      ipAddress,
+      payload.deviceName || 'N/A',
+      payload.location || 'N/A',
+      payload.userAgent || 'N/A',
+      'user',
+    );
+
     const accessToken = await this.generateToken({
       id: existEmail.id,
       email: existEmail.email,
@@ -63,7 +112,7 @@ export class AuthService {
     };
   }
 
-  async loginTeacher(payload: LoginDto) {
+  async loginTeacher(payload: LoginDto, ipAddress: string = '') {
     const email = String(payload?.email || '').trim();
     if (!email) {
       throw new BadRequestException('Login or password wrong');
@@ -91,6 +140,16 @@ export class AuthService {
       throw new BadRequestException('Login or password wrong');
     }
 
+    // Log login activity
+    await this.logAndNotifyLogin(
+      existEmail.email,
+      ipAddress,
+      payload.deviceName || 'N/A',
+      payload.location || 'N/A',
+      payload.userAgent || 'N/A',
+      'teacher',
+    );
+
     const accessToken = await this.generateToken({
       id: existEmail.id,
       email: existEmail.email,
@@ -103,7 +162,8 @@ export class AuthService {
       accessToken,
     };
   }
-  async loginStudent(payload: LoginDto) {
+
+  async loginStudent(payload: LoginDto, ipAddress: string = '') {
     const email = String(payload?.email || '').trim();
     if (!email) {
       throw new BadRequestException('Login or password wrong');
@@ -124,6 +184,17 @@ export class AuthService {
     if (!(await comparePassword(payload.password, existEmail.password))) {
       throw new BadRequestException('Login or password wrong');
     }
+
+    // Log login activity
+    await this.logAndNotifyLogin(
+      existEmail.email,
+      ipAddress,
+      payload.deviceName || 'N/A',
+      payload.location || 'N/A',
+      payload.userAgent || 'N/A',
+      'student',
+    );
+
     const accessToken = await this.generateToken({
       id: existEmail.id,
       email: existEmail.email,

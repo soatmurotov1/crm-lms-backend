@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
+import { TelegramModule } from 'src/common/telegram/telegram.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PrismaModule } from 'src/common/prisma/prisma.module';
       global: true,
     }),
     PrismaModule,
+    TelegramModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
