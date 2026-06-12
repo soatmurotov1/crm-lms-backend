@@ -20,6 +20,7 @@ async function bootstrap() {
       'http://localhost:5174',
       'http://127.0.0.1:4040',
       'http://127.0.0.1:3000',
+      'https://crm-lms-backend-6.onrender.com/api'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
