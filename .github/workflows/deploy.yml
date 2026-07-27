@@ -18,11 +18,13 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          # MUHIM: default 10m yetmaydi - docker build undan uzoq davom etadi
+          command_timeout: 40m
           script: |
             set -e
 
             PROJECT_DIR="/root/crm-lms-backend"
-            
+
             # 1. Papka mavjudligini tekshirish
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found. Cloning..."
@@ -32,24 +34,49 @@ jobs:
             cd "$PROJECT_DIR"
 
             # 2. Konfliktlarni oldini olish uchun "Hard Reset"
-            echo "Cleaning up local changes and pulling latest code..."
+            echo "==> Pulling latest code..."
             git fetch origin main
             git reset --hard origin/main
 
-            # 3. .env fayli yo'q bo'lsa, xato bermasligi uchun yaratib qo'yish
-            # Eslatma: Haqiqiy ma'lumotlarni serverda qo'lda nano .env qilib yozishingiz kerak
+            # 3. .env majburiy - bo'sh fayl bilan ilova ishga tushmaydi
             if [ ! -f .env ]; then
-              echo "Creating temporary .env file..."
-              touch .env
+              echo "ERROR: .env fayli topilmadi!"
+              echo "Serverda '$PROJECT_DIR/.env' faylini qo'lda yarating (nano .env)."
+              exit 1
             fi
 
-            # 4. Docker tizimini tozalash (eski keraksiz qatlamlarni o'chirish)
-            echo "Cleaning up old docker images..."
+            # 4. Image'ni oldin quramiz (eski konteynerlar ishlab turgan holda)
+            echo "==> Building new image..."
+            docker compose build
+
+            # 5. Konteynerlarni almashtirish
+            echo "==> Restarting containers..."
+            docker compose up -d --remove-orphans
+
+            # 6. App konteyneri ko'tarilishini kutish
+            echo "==> Waiting for app container..."
+            for i in $(seq 1 30); do
+              if [ "$(docker inspect -f '{{.State.Running}}' crm-lms-backend-app 2>/dev/null)" = "true" ]; then
+                break
+              fi
+              sleep 2
+            done
+
+            # 7. DB migratsiyalarini qo'llash
+            echo "==> Applying database migrations..."
+            docker compose exec -T app npx prisma migrate deploy
+
+            # 8. Migratsiyadan keyin app'ni qayta ishga tushirish
+            # (birinchi deployda superadmin seed jadvallar yaratilgunicha ishlamaydi)
+            echo "==> Restarting app after migrations..."
+            docker compose restart app
+
+            # 9. Eski image qatlamlarini tozalash (build'dan KEYIN)
+            echo "==> Cleaning up old docker images..."
             docker image prune -f
 
-            # 5. Konteynerlarni qayta qurish va ishga tushirish
-            echo "Stopping old containers and starting new ones..."
-            docker compose down --remove-orphans
-            docker compose up -d --build
+            # 10. Natijani ko'rsatish
+            docker compose ps
+            docker compose logs --tail=40 app
 
             echo "Deployment finished successfully!"

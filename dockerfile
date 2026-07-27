@@ -9,11 +9,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --legacy-peer-deps
 
-# Copy prisma schema
+# Prisma 7 uchun: schema + config fayli generate'dan OLDIN kerak
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 
 # Generate prisma client
-RUN npx prisma generate
+# DATABASE_URL build vaqtida ishlatilmaydi, lekin config uni talab qiladi -> dummy qiymat
+RUN DATABASE_URL="postgresql://user:pass@localhost:5432/db" npx prisma generate
 
 # Copy source code
 COPY . .
@@ -31,16 +33,22 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+# `prisma db push` / `migrate deploy` konteyner ichida ishlashi uchun
+COPY --from=builder /app/prisma.config.ts ./
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nestjs -u 1001
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nestjs -u 1001 \
+    && mkdir -p /app/logs \
+    && chown -R nestjs:nodejs /app/logs
+
 USER nestjs
 
 EXPOSE 3000
 
-# Healthcheck
+# Healthcheck (alpine'da curl yo'q - node bilan tekshiramiz)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+    CMD node -e "require('http').get('http://127.0.0.1:3000/api',(r)=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["node", "dist/src/main.js"]    
+# tsconfig.build.json prisma.config.ts'ni exclude qiladi -> rootDir=src -> chiqish: dist/main.js
+CMD ["node", "dist/main.js"]
