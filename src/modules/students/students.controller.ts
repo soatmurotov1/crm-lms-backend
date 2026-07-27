@@ -98,6 +98,7 @@ export class StudentsController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @UseGuards(AuthGuard, RolesGuard)
@@ -106,11 +107,8 @@ export class StudentsController {
   createStudent(
     @Body() payload: CreateStudentDto,
     @UploadedFile() file?: Express.Multer.File,
-    @Req() req?: Request,
   ) {
-    const creatorEmail =
-      req?.['user']?.email || process.env.DEFAULT_EMAIL || 'admin@example.com';
-    return this.studentsService.createStudent(payload, creatorEmail, file);
+    return this.studentsService.createStudent(payload, file);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
@@ -146,6 +144,7 @@ export class StudentsController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @UseGuards(AuthGuard, RolesGuard)

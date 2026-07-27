@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { PaymentMethod, PaymentStatus, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { StartPaymentDto } from './dto/start-payment.dto';
 import { MarkPaymentDto } from './dto/mark-payment.dto';
@@ -157,6 +158,68 @@ export class PaymentsService {
     };
   }
 
+  /**
+   * Yil bo'yicha oylik daromad — dashboard'dagi "Daromad statistikasi" grafigi uchun.
+   * getMonthlySummary'ni 12 marta chaqirmaslik uchun ma'lumot bir marta olinib,
+   * oylar bo'yicha xotirada guruhlanadi.
+   */
+  async getYearlySummary(year?: number) {
+    const targetYear = Number(year || new Date().getFullYear());
+
+    if (!Number.isFinite(targetYear)) {
+      throw new BadRequestException("Noto'g'ri sana");
+    }
+
+    const [studentGroups, payments] = await Promise.all([
+      this.prisma.studentGroup.findMany({
+        where: {
+          status: 'ACTIVE',
+          student: { status: 'ACTIVE' },
+          group: { status: 'ACTIVE' },
+        },
+        include: {
+          group: { include: { course: true } },
+        },
+      }),
+      this.prisma.payment.findMany({
+        where: { year: targetYear },
+      }),
+    ]);
+
+    const expectedPerMonth = studentGroups.reduce(
+      (total, studentGroup) =>
+        total + this.toAmount(studentGroup.group.course?.price),
+      0,
+    );
+
+    const months = Array.from({ length: 12 }, (_, index) => ({
+      year: targetYear,
+      month: index + 1,
+      paid: 0,
+      pending: 0,
+      debt: 0,
+      expected: expectedPerMonth,
+    }));
+
+    payments.forEach((payment) => {
+      const bucket = months[payment.month - 1];
+      if (!bucket) return;
+
+      const amount = this.toAmount(payment.amount);
+      if (payment.status === PaymentStatus.PAID) {
+        bucket.paid += amount;
+      } else if (payment.status === PaymentStatus.PENDING) {
+        bucket.pending += amount;
+      }
+    });
+
+    months.forEach((bucket) => {
+      bucket.debt = Math.max(bucket.expected - bucket.paid - bucket.pending, 0);
+    });
+
+    return { year: targetYear, months };
+  }
+
   async getAdminMonthlyPayments(
     year?: number,
     month?: number,
@@ -238,9 +301,14 @@ export class PaymentsService {
 
   async getStudentMonthlyPayments(
     studentId: number,
+    currentUser: { id: number; role: Role },
     year?: number,
     month?: number,
   ) {
+    if (currentUser?.role === Role.STUDENT && currentUser.id !== studentId) {
+      throw new ForbiddenException("Bu sizning to'lovlaringiz emas");
+    }
+
     const { targetYear, targetMonth } = this.normalizeMonthYear(year, month);
 
     const student = await this.prisma.student.findUnique({

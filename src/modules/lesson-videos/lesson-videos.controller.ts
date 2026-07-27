@@ -70,6 +70,7 @@ export class LessonVideosController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: 200 * 1024 * 1024 },
     }),
   )
   @Post()

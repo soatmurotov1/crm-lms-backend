@@ -8,5 +8,5 @@ export class HomeworkStatusDto {
   @IsString()
   @Type(() => String)
   @IsEnum(HomeworkStatus)
-  status: HomeworkStatus
+  status: HomeworkStatus;
 }

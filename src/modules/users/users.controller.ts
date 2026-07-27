@@ -49,6 +49,7 @@ export class UsersController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @UseGuards(AuthGuard, RolesGuard)
@@ -104,6 +105,7 @@ export class UsersController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @Put(':id')

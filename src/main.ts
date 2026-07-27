@@ -20,7 +20,6 @@ async function bootstrap() {
       'http://localhost:5174',
       'http://127.0.0.1:4040',
       'http://127.0.0.1:3000',
-      'https://crm-lms-backend-6.onrender.com/api'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -38,8 +37,8 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Najot Talim CRM')
-    .setDescription('CRM platform API')
+    .setTitle('EduCenter')
+    .setDescription('EduCenter - talim boshqaruv tizimi API')
     .setVersion('1.1.1')
     .addBearerAuth()
     .build();
@@ -64,11 +63,6 @@ async function bootstrap() {
     `);
   });
 
-  logger.log(`✅ Database connected successfully`);
-  logger.log(`✅ Redis cache initialized`);
 }
-
-const port = process.env.PORT || 3000;
-console.log(`Server running on: http://localhost:${port}/api`);
 
 bootstrap();

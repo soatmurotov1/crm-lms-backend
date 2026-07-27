@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update.user.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { MailerService } from 'src/common/email/mailer.service';
@@ -8,6 +8,8 @@ import { hashPassword } from 'src/common/bcrypt/bcrypt';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private mailerService: MailerService,
@@ -16,6 +18,8 @@ export class UsersService {
 
   async createUser(payload: CreateUserDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const plainPassword = payload.password.trim();
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'users');
@@ -24,26 +28,44 @@ export class UsersService {
     await this.prisma.user.create({
       data: {
         ...payload,
-        password: await hashPassword(payload.password),
+        email: normalizedEmail,
+        password: await hashPassword(plainPassword),
         hire_date: new Date(payload.hire_date),
         photo: photoUrl,
       },
     });
 
-    await this.mailerService.sendEmail(
-      payload.email,
-      payload.email,
-      payload.password,
-    );
+    // Email ketmasa ham foydalanuvchi yaratilgan bo'ladi, shuning uchun
+    // xatolik butun so'rovni yiqitmasligi kerak.
+    try {
+      await this.mailerService.sendEmail(
+        normalizedEmail,
+        normalizedEmail,
+        plainPassword,
+      );
+    } catch (error) {
+      this.logger.error(
+        `User created but email send failed: ${normalizedEmail}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return {
+        success: true,
+        emailSent: false,
+        message: 'Foydalanuvchi yaratildi, lekin email yuborilmadi',
+      };
+    }
 
     return {
       success: true,
+      emailSent: true,
       message: 'User successfully created',
     };
   }
 
   async getAllUsers() {
-    const users = await this.prisma.user.findMany();
+    const users = await this.prisma.user.findMany({
+      omit: { password: true },
+    });
 
     return {
       success: true,
@@ -52,7 +74,10 @@ export class UsersService {
   }
 
   async getOneUser(id: number) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      omit: { password: true },
+    });
     if (!user) {
       throw new NotFoundException('User is Not found');
     }

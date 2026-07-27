@@ -5,7 +5,7 @@ export class UpdateAttendanceDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   @IsNotEmpty()
-  lessonId: number
+  lessonId: number;
 
   @ApiProperty({ example: 1 })
   @IsInt()
@@ -15,5 +15,5 @@ export class UpdateAttendanceDto {
   @ApiProperty({ example: true })
   @IsBoolean()
   @IsNotEmpty()
-  isPresent: boolean
+  isPresent: boolean;
 }

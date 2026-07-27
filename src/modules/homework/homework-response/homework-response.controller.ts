@@ -82,6 +82,7 @@ export class HomeworkResponseController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
   @Post()
@@ -114,6 +115,7 @@ export class HomeworkResponseController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
   @Put()

@@ -43,7 +43,7 @@ export class StudentGroupService {
     if (!existStudent) {
       throw new NotFoundException('Student not found with this id');
     }
-    if (groupStudentsCount >= existGroup!.room.capacity) {
+    if (groupStudentsCount >= existGroup.room.capacity) {
       throw new BadRequestException("Group limit to'lgan");
     }
     await this.prisma.studentGroup.create({

@@ -50,6 +50,7 @@ export class TeachersController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @UseGuards(AuthGuard, RolesGuard)
@@ -59,11 +60,8 @@ export class TeachersController {
   createTeacher(
     @Body() payload: CreateTeacherDto,
     @UploadedFile() file?: Express.Multer.File,
-    @Req() req?: Request,
   ) {
-    const creatorEmail =
-      req?.['user']?.email || process.env.DEFAULT_EMAIL || 'admin@example.com';
-    return this.teachersService.createTeacher(payload, creatorEmail, file);
+    return this.teachersService.createTeacher(payload, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -111,6 +109,7 @@ export class TeachersController {
   @UseInterceptors(
     FileInterceptor('photo', {
       storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
     }),
   )
   @UseGuards(AuthGuard, RolesGuard)

@@ -58,7 +58,6 @@ export class RoomsController {
     return this.roomService.updateRoom(id, payload);
   }
 
-  
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })

@@ -1,42 +1,32 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Request } from 'express';
+import { LoginThrottleGuard } from 'src/common/guard/login-throttle.guard';
+import { getClientIp } from 'src/common/utils/client-ip.util';
 
 @Controller('auth')
+@UseGuards(LoginThrottleGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  private getClientIp(request: Request): string {
-    return (
-      (request.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-      (request.headers['x-real-ip'] as string) ||
-      request.socket.remoteAddress ||
-      'Unknown'
-    );
-  }
-
   @Post('login')
   login(@Body() payload: LoginDto, @Req() request: Request) {
-    const ipAddress = this.getClientIp(request);
-    return this.authService.login(payload, ipAddress);
+    return this.authService.login(payload, getClientIp(request));
   }
 
   @Post('login/admin')
   loginAdmin(@Body() payload: LoginDto, @Req() request: Request) {
-    const ipAddress = this.getClientIp(request);
-    return this.authService.login(payload, ipAddress);
+    return this.authService.login(payload, getClientIp(request));
   }
 
   @Post('login/teacher')
   loginTeacher(@Body() payload: LoginDto, @Req() request: Request) {
-    const ipAddress = this.getClientIp(request);
-    return this.authService.loginTeacher(payload, ipAddress);
+    return this.authService.loginTeacher(payload, getClientIp(request));
   }
 
   @Post('login/student')
   loginStudent(@Body() payload: LoginDto, @Req() request: Request) {
-    const ipAddress = this.getClientIp(request);
-    return this.authService.loginStudent(payload, ipAddress);
+    return this.authService.loginStudent(payload, getClientIp(request));
   }
 }

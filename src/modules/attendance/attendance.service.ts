@@ -38,6 +38,60 @@ export class AttendanceService {
     };
   }
 
+  /**
+   * Oxirgi 7 kunlik davomat, hafta kunlari bo'yicha — dashboard'dagi
+   * "Davomat statistikasi" grafigi uchun.
+   *
+   * Lesson modelida dars sanasi maydoni yo'q, shuning uchun guruhlash
+   * Attendance.created_at (davomat belgilangan vaqt) bo'yicha amalga oshiriladi.
+   */
+  async getWeeklyStats(groupId?: number) {
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    since.setHours(0, 0, 0, 0);
+
+    const records = await this.prisma.attendance.findMany({
+      where: {
+        created_at: { gte: since },
+        ...(groupId ? { lesson: { groupId } } : {}),
+      },
+      select: {
+        isPresent: true,
+        created_at: true,
+      },
+    });
+
+    // 0 = Yakshanba ... 6 = Shanba (JS getDay tartibi)
+    const labels = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'];
+    const days = labels.map((label, index) => ({
+      day: label,
+      weekday: index,
+      present: 0,
+      total: 0,
+      percent: 0,
+    }));
+
+    records.forEach((record) => {
+      const bucket = days[record.created_at.getDay()];
+      bucket.total += 1;
+      if (record.isPresent) bucket.present += 1;
+    });
+
+    days.forEach((bucket) => {
+      bucket.percent = bucket.total
+        ? Math.round((bucket.present / bucket.total) * 100)
+        : 0;
+    });
+
+    // Dushanbadan boshlab qaytaramiz
+    const ordered = [...days.slice(1), days[0]];
+
+    return {
+      success: true,
+      data: ordered,
+    };
+  }
+
   async createAttendance(
     payload: CreateAttendanceDto,
     currentUser: { id: number; role: Role },

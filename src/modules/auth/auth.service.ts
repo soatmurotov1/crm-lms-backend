@@ -4,14 +4,12 @@ import { JwtService } from '@nestjs/jwt';
 import { comparePassword } from 'src/common/bcrypt/bcrypt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { Role } from '@prisma/client';
-import { TelegramService } from 'src/common/telegram/telegram.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private telegramService: TelegramService,
   ) {}
 
   private async generateToken(payload: {
@@ -42,16 +40,6 @@ export class AuthService {
           loginType,
           success: true,
         },
-      });
-
-      // Send Telegram notification
-      await this.telegramService.sendLoginNotification({
-        userEmail: email,
-        ipAddress,
-        deviceName,
-        location,
-        loginType,
-        timestamp: new Date().toLocaleString('uz-UZ'),
       });
     } catch (error) {
       console.error('Login logging xatosi:', error);
@@ -130,12 +118,7 @@ export class AuthService {
       throw new BadRequestException('Login or password wrong');
     }
 
-    const passwordMatches = await comparePassword(
-      payload.password,
-      existEmail.password,
-    );
-    const plainPasswordMatches = payload.password === existEmail.password;
-    if (!passwordMatches && !plainPasswordMatches) {
+    if (!(await comparePassword(payload.password, existEmail.password))) {
       throw new BadRequestException('Login or password wrong');
     }
 

@@ -1,17 +1,23 @@
-import { IsInt, IsString, IsEnum, IsArray, IsDateString } from 'class-validator';
+import {
+  IsInt,
+  IsString,
+  IsEnum,
+  IsArray,
+  IsDateString,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { Status, WeekDays } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
 const toWeekDaysArray = ({ value }: { value: unknown }) => {
   if (Array.isArray(value)) {
-    return value
+    return value;
   }
 
   if (typeof value === 'string') {
-    const trimmed = value.trim()
+    const trimmed = value.trim();
     if (!trimmed) {
-      return value
+      return value;
     }
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
@@ -19,55 +25,54 @@ const toWeekDaysArray = ({ value }: { value: unknown }) => {
         if (Array.isArray(parsed)) {
           return parsed;
         }
-      } catch {
-      }
+      } catch {}
     }
 
     if (trimmed.includes(',')) {
       return trimmed
         .split(',')
         .map((day) => day.trim())
-        .filter(Boolean)
+        .filter(Boolean);
     }
 
-    return [trimmed]
+    return [trimmed];
   }
 
-  return value
-}
+  return value;
+};
 
 export class CreateGroupDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   @Type(() => Number)
-  teacherId: number
+  teacherId: number;
 
   @ApiProperty({ example: 1 })
   @IsInt()
   @Type(() => Number)
-  roomId: number
+  roomId: number;
 
   @ApiProperty({ example: 1 })
   @IsInt()
   @Type(() => Number)
-  courseId: number
+  courseId: number;
 
   @ApiProperty({ example: 'string' })
   @IsString()
-  name: string
+  name: string;
 
   @ApiProperty({ example: Status.ACTIVE })
   @IsEnum(Status)
-  status: Status
+  status: Status;
 
   @ApiProperty({ example: new Date().toLocaleDateString() })
   @IsDateString()
-  startDate: string
+  startDate: string;
 
   @ApiProperty({ example: new Date().toLocaleTimeString() })
   @IsString()
-  startTime: string
-  
+  startTime: string;
+
   @ApiProperty()
   @Transform(toWeekDaysArray)
   @IsArray()

@@ -3,19 +3,25 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
-import { TelegramModule } from 'src/common/telegram/telegram.module';
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: {
-        expiresIn: '2h',
-      },
+    JwtModule.registerAsync({
       global: true,
+      useFactory: () => {
+        if (!process.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+
+        return {
+          secret: process.env.JWT_SECRET,
+          signOptions: {
+            expiresIn: '2h',
+          },
+        };
+      },
     }),
     PrismaModule,
-    TelegramModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

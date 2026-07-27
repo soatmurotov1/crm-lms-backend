@@ -5,19 +5,19 @@ import { Role } from '@prisma/client';
 export class CreateStudentDto {
   @ApiProperty()
   @IsString()
-  fullName: string
+  fullName: string;
 
   @ApiProperty()
   @IsEmail()
-  email: string
+  email: string;
 
   @ApiProperty()
   @IsString()
-  password: string
+  password: string;
 
   @ApiProperty()
   @IsString()
-  birth_date: string
+  birth_date: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

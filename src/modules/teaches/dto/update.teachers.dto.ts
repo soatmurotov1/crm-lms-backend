@@ -5,43 +5,43 @@ import { IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
 const emptyToUndefined = ({ value }: { value: unknown }) => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed
-}
+  return trimmed === '' ? undefined : trimmed;
+};
 
 export class UpdateTeachersDto {
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsString()
-  fullName?: string
+  fullName?: string;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsEmail()
-  email?: string
+  email?: string;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsString()
-  password?: string
+  password?: string;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsString()
-  position?: string
+  position?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber()
-  @Type(() => Number) 
-  experience?: number
+  @Type(() => Number)
+  experience?: number;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)
   @IsOptional()
   @IsString()
-  photo?: string
+  photo?: string;
 }

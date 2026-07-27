@@ -82,6 +82,8 @@ model User {
   lessonVideos    LessonVideo[]
   homeworkResults HomeworkResult[]
   studentGroups   StudentGroup[]
+  exams           Exam[]
+  examResults     ExamResult[]
 }
 
 model Teacher {
@@ -103,6 +105,8 @@ model Teacher {
   lessonVideos    LessonVideo[]
   ratings         Rating[]
   homeworkResults HomeworkResult[]
+  exams           Exam[]
+  examResults     ExamResult[]
 }
 
 model Student {
@@ -121,6 +125,8 @@ model Student {
   attendances       Attendance[]
   homeworkResults   HomeworkResult[]
   homeworkResponses HomeworkResponse[]
+  examResponses     ExamResponse[]
+  examResults       ExamResult[]
 }
 
 model Course {
@@ -137,6 +143,7 @@ model Course {
 
   groups   Group[]
   payments Payment[]
+  exams    Exam[]
 }
 
 model Room {
@@ -171,6 +178,7 @@ model Group {
   room         Room           @relation(fields: [roomId], references: [id])
   course       Course         @relation(fields: [courseId], references: [id])
   lessons      Lesson[]
+  exams        Exam[]
 
   @@unique([courseId, name])
 }
@@ -255,6 +263,7 @@ model Homework {
   title        String
   file         String?
   durationTime Int      @default(16)
+  dueDate      DateTime?
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
@@ -334,3 +343,72 @@ model LoginLog {
   success    Boolean  @default(true)
   created_at DateTime @default(now())
 }
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  userType  String
+  expiresAt DateTime
+  created_at DateTime @default(now())
+}
+
+model Exam {
+  id           Int       @id @default(autoincrement())
+  groupId      Int
+  courseId     Int?
+  teacherId    Int?
+  userId       Int?
+  title        String
+  description  String?
+  file         String?
+  dueDate      DateTime?
+  durationTime Int       @default(60)
+  maxScore     Int       @default(100)
+  status       Status    @default(ACTIVE)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  group       Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  course      Course?       @relation(fields: [courseId], references: [id])
+  teacher     Teacher?      @relation(fields: [teacherId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
+  responses   ExamResponse[]
+  results     ExamResult[]
+}
+
+model ExamResponse {
+  id         Int      @id @default(autoincrement())
+  examId     Int
+  studentId  Int
+  title      String?
+  file       String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+model ExamResult {
+  id         Int            @id @default(autoincrement())
+  examId     Int
+  studentId  Int
+  teacherId  Int?
+  userId     Int?
+  comment    String?
+  score      Int
+  status     HomeworkStatus @default(NOT_REVIEWED)
+  created_at DateTime       @default(now())
+  updated_at DateTime       @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+
+  @@unique([examId, studentId])
+}
+    

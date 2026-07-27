@@ -182,11 +182,7 @@ export class StudentsService {
     };
   }
 
-  async createStudent(
-    payload: CreateStudentDto,
-    creatorEmail: string,
-    file?: Express.Multer.File,
-  ) {
+  async createStudent(payload: CreateStudentDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
     const normalizedEmail = payload.email.trim().toLowerCase();
     const plainPassword = payload.password.trim();
@@ -206,9 +202,10 @@ export class StudentsService {
       },
     });
 
+    // Kirish ma'lumotlari talabaning o'z pochtasiga yuboriladi.
     try {
       await this.mailerService.sendEmail(
-        creatorEmail,
+        normalizedEmail,
         normalizedEmail,
         plainPassword,
       );
@@ -244,7 +241,9 @@ export class StudentsService {
   }
 
   async getAllStudents() {
-    const Students = await this.prisma.student.findMany();
+    const Students = await this.prisma.student.findMany({
+      omit: { password: true },
+    });
 
     return {
       success: true,
@@ -253,7 +252,10 @@ export class StudentsService {
   }
 
   async getOneStudent(id: number) {
-    const Student = await this.prisma.student.findUnique({ where: { id } });
+    const Student = await this.prisma.student.findUnique({
+      where: { id },
+      omit: { password: true },
+    });
     if (!Student) {
       throw new NotFoundException('Student is Not found');
     }

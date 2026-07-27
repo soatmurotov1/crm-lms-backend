@@ -38,7 +38,7 @@ export class StudentGroupController {
   @Delete()
   deleteStudentGroup(
     @Body() payload: CreateStudentGroupDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     return this.studentGroupServise.deleteStudentGroup(payload, req['user']);
   }

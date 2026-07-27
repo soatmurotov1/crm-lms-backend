@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { LessonsService } from './lessons.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
@@ -13,34 +24,40 @@ import { Roles } from 'src/common/guard/decarator.roles';
 export class LessonsController {
   constructor(private readonly lessonServise: LessonsService) {}
 
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`,
+  })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
   @Get('group/:groupId')
   getLessonsByGroupId(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     return this.lessonServise.getLessonsByGroupId(groupId, req['user']);
   }
 
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`,
+  })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
   @Get('/:groupId/:lessonId')
   getOneLessonByGroupIdAndLessonId(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Param('lessonId', ParseIntPipe) lessonId: number,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     return this.lessonServise.getOneLessonByGroupIdAndLessonId(
       groupId,
       lessonId,
       req['user'],
-    )
+    );
   }
 
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`})
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.TEACHER}`,
+  })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
   @Post()
@@ -63,7 +80,7 @@ export class LessonsController {
     return this.lessonServise.updateLessonById(groupId, lessonId, payload);
   }
 
-  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}`})
+  @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN')
   @Delete(':groupId/:lessonId')

@@ -1,13 +1,16 @@
 import * as dotenv from 'dotenv';
-dotenv.config(); 
+dotenv.config();
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { ConfigService } from '@nestjs/config'; 
+import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private pool: Pool;
 
   constructor(private configService: ConfigService) {
@@ -22,12 +25,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     await this.$connect();
-    console.log("prisma connect");
+    console.log('prisma connect');
   }
 
   async onModuleDestroy() {
-    await this.$disconnect()
-    console.log("Prisma connnect error")
+    await this.$disconnect();
+    console.log('Prisma connnect error');
     await this.pool.end();
   }
 }

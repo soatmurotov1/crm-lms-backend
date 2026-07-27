@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Put,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
@@ -23,6 +24,19 @@ import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 @ApiBearerAuth()
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
+
+  // ':lessonId' dan oldin turishi kerak, aks holda marshrut chalkashishi mumkin.
+  @ApiOperation({
+    summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,
+  })
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.MANAGEMENT)
+  @Get('stats/weekly')
+  getWeeklyStats(@Query('groupId') groupId?: string) {
+    return this.attendanceService.getWeeklyStats(
+      groupId ? Number(groupId) : undefined,
+    );
+  }
 
   @ApiOperation({
     summary: `${Role.ADMIN}, ${Role.SUPERADMIN}, ${Role.TEACHER}`,

@@ -9,17 +9,16 @@ import { join } from 'path';
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
-        service: 'gmail',
         auth: {
           user: process.env.GMAIL_USER,
           pass: process.env.GMAIL_PASS,
         },
       },
       defaults: {
-        from: `"Soatmurotov Abrorbek" <${process.env.GMAIL_USER}>`,
+        from: `"EduCenter" <${process.env.GMAIL_USER}>`,
       },
       template: {
-        dir: join(__dirname, '../../..', 'template'),
+        dir: join(process.cwd(), 'template'),
         options: {
           strict: true,
         },

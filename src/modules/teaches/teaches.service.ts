@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { MailerService } from 'src/common/email/mailer.service';
@@ -14,46 +15,65 @@ import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
 
 @Injectable()
 export class TeachersService {
+  private readonly logger = new Logger(TeachersService.name);
+
   constructor(
     private prisma: PrismaService,
     private mailerService: MailerService,
     private cloudinaryService: CloudinaryService,
   ) {}
 
-  async createTeacher(
-    payload: CreateTeacherDto,
-    creatorEmail: string,
-    file?: Express.Multer.File,
-  ) {
+  async createTeacher(payload: CreateTeacherDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const plainPassword = payload.password.trim();
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'teachers');
     }
 
-    const teacher = await this.prisma.teacher.create({
+    await this.prisma.teacher.create({
       data: {
         ...payload,
+        email: normalizedEmail,
         experience: Number(payload.experience),
-        password: await hashPassword(payload.password),
+        password: await hashPassword(plainPassword),
         photo: photoUrl,
       },
     });
 
-    await this.mailerService.sendEmail(
-      creatorEmail,
-      payload.email,
-      payload.password,
-    );
+    // Kirish ma'lumotlari o'qituvchining o'z pochtasiga yuboriladi.
+    // Email ketmasa ham o'qituvchi yaratilgan bo'ladi, shuning uchun
+    // xatolik butun so'rovni yiqitmasligi kerak.
+    try {
+      await this.mailerService.sendEmail(
+        normalizedEmail,
+        normalizedEmail,
+        plainPassword,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Teacher created but email send failed: ${normalizedEmail}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return {
+        success: true,
+        emailSent: false,
+        message: "O'qituvchi yaratildi, lekin email yuborilmadi",
+      };
+    }
 
     return {
       success: true,
+      emailSent: true,
       message: 'Teacher successfully created',
     };
   }
 
   async getAllTeachers() {
-    const Teachers = await this.prisma.teacher.findMany();
+    const Teachers = await this.prisma.teacher.findMany({
+      omit: { password: true },
+    });
 
     return {
       success: true,
@@ -62,7 +82,10 @@ export class TeachersService {
   }
 
   async getOneTeacher(id: number) {
-    const Teacher = await this.prisma.teacher.findUnique({ where: { id } });
+    const Teacher = await this.prisma.teacher.findUnique({
+      where: { id },
+      omit: { password: true },
+    });
     if (!Teacher) {
       throw new NotFoundException('Teacher is Not found');
     }

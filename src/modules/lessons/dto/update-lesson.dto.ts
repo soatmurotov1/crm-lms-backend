@@ -5,5 +5,5 @@ export class UpdateLessonDto {
   @ApiPropertyOptional({ example: 'string' })
   @IsOptional()
   @IsString()
-  title?: string
+  title?: string;
 }

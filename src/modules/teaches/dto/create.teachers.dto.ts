@@ -5,27 +5,27 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 export class CreateTeacherDto {
   @ApiProperty()
   @IsString()
-  fullName: string
+  fullName: string;
 
   @ApiProperty()
   @IsString()
-  email: string
+  email: string;
 
   @ApiProperty()
   @IsString()
-  password: string
+  password: string;
 
   @ApiProperty()
   @IsString()
-  position: string
+  position: string;
 
   @ApiProperty()
   @IsNumber()
   @Type(() => Number)
-  experience: number
+  experience: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  photo?: string
+  photo?: string;
 }
