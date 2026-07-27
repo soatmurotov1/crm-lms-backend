@@ -17,13 +17,6 @@ export class PaymentsService {
 
   private paymeMerchantId = process.env.PAYME_MERCHANT_ID || '';
   private paymeCheckoutUrl = process.env.PAYME_CHECKOUT_URL || '';
-  private telegramToken = process.env.TELEGRAM_BOT_TOKEN || '';
-  private telegramChatId = process.env.TELEGRAM_CHAT_ID || '';
-
-  private formatTelegramTime(date = new Date()) {
-    const pad = (value: number) => String(value).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-  }
 
   private toAmount(value: unknown) {
     if (value && typeof value === 'object' && 'toNumber' in value) {
@@ -49,30 +42,6 @@ export class PaymentsService {
     ).toString('base64');
 
     return `${this.paymeCheckoutUrl}${payload}`;
-  }
-
-  private async notifyTelegram(text: string) {
-    if (!this.telegramToken || !this.telegramChatId) return;
-
-    const message = `${text}\nVaqt: ${this.formatTelegramTime()}`;
-
-    try {
-      await fetch(
-        `https://api.telegram.org/bot${this.telegramToken}/sendMessage`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: this.telegramChatId,
-            text: message,
-          }),
-        },
-      );
-    } catch {
-      // Ignore bot errors and keep payment flow alive.
-    }
   }
 
   private normalizeMonthYear(year?: number, month?: number) {
@@ -422,10 +391,6 @@ export class PaymentsService {
           },
         });
 
-    await this.notifyTelegram(
-      `${studentGroup.student.fullName} ${studentGroup.group.course?.name || ''} kursi uchun ${amount} so'm to'lovni boshladi.`,
-    );
-
     return {
       paymentId: payment.id,
       paymentUrl: this.buildPaymeUrl(payment.id, amount, studentId, groupId),
@@ -437,7 +402,6 @@ export class PaymentsService {
   async markPaymentPaid(paymentId: number, payload: MarkPaymentDto) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { student: true, group: { include: { course: true } } },
     });
 
     if (!payment) {
@@ -453,10 +417,6 @@ export class PaymentsService {
       },
     });
 
-    await this.notifyTelegram(
-      `${payment.student.fullName} ${payment.group.course?.name || ''} kursi uchun to'lov tasdiqlandi.`,
-    );
-
     return updated;
   }
 
@@ -466,7 +426,6 @@ export class PaymentsService {
   ) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { student: true, group: { include: { course: true } } },
     });
 
     if (!payment) {
@@ -483,122 +442,22 @@ export class PaymentsService {
       },
     });
 
-    if (nextStatus === PaymentStatus.PAID) {
-      await this.notifyTelegram(
-        `${payment.student.fullName} ${payment.group.course?.name || ''} kursi uchun to'lov tasdiqlandi.`,
-      );
-    }
-
-    if (nextStatus === PaymentStatus.CANCELED) {
-      await this.notifyTelegram(
-        `${payment.student.fullName} ${payment.group.course?.name || ''} kursi uchun to'lov bekor qilindi.`,
-      );
-    }
-
-    if (nextStatus === PaymentStatus.PENDING) {
-      await this.notifyTelegram(
-        `${payment.student.fullName} ${payment.group.course?.name || ''} kursi uchun to'lov jarayoni qayta boshlandi.`,
-      );
-    }
-
     return updated;
   }
 
   @Cron('*/5 * * * *')
   async autoCancelExpiredPayments() {
     const threshold = new Date(Date.now() - 60 * 60 * 1000);
-    const expired = await this.prisma.payment.findMany({
-      where: {
-        status: PaymentStatus.PENDING,
-        created_at: { lt: threshold },
-      },
-      include: {
-        student: true,
-        group: { include: { course: true } },
-      },
-    });
-
-    if (!expired.length) return;
 
     await this.prisma.payment.updateMany({
       where: {
-        id: { in: expired.map((payment) => payment.id) },
+        status: PaymentStatus.PENDING,
+        created_at: { lt: threshold },
       },
       data: {
         status: PaymentStatus.CANCELED,
       },
     });
-
-    for (const payment of expired) {
-      await this.notifyTelegram(
-        `${payment.student.fullName} ${payment.group.course?.name || ''} kursi uchun to'lov 1 soatda tasdiqlanmadi va bekor qilindi.`,
-      );
-    }
   }
 
-  @Cron('0 * * * *')
-  async sendHourlyStatus() {
-    const endAt = new Date();
-    const startAt = new Date(endAt.getTime() - 60 * 60 * 1000);
-
-    const [paidLastHour, pendingLastHour] = await Promise.all([
-      this.prisma.payment.findMany({
-        where: {
-          status: PaymentStatus.PAID,
-          paidAt: {
-            gte: startAt,
-            lt: endAt,
-          },
-        },
-      }),
-      this.prisma.payment.findMany({
-        where: {
-          status: PaymentStatus.PENDING,
-          created_at: {
-            gte: startAt,
-            lt: endAt,
-          },
-        },
-      }),
-    ]);
-
-    const paidTotal = paidLastHour.reduce(
-      (sum, payment) => sum + this.toAmount(payment.amount),
-      0,
-    );
-    const pendingTotal = pendingLastHour.reduce(
-      (sum, payment) => sum + this.toAmount(payment.amount),
-      0,
-    );
-
-    await this.notifyTelegram(
-      `Soatlik statistika (ohirgi 1 soat): to'langan ${paidLastHour.length} ta, jami ${paidTotal} so'm. Kutilayotgan ${pendingLastHour.length} ta, jami ${pendingTotal} so'm.`,
-    );
-  }
-
-  @Cron('0 0 * * *')
-  async sendDailyStats() {
-    const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const paidToday = await this.prisma.payment.findMany({
-      where: {
-        status: PaymentStatus.PAID,
-        paidAt: { gte: dayStart },
-      },
-    });
-
-    const paidTotal = paidToday.reduce(
-      (sum, payment) => sum + this.toAmount(payment.amount),
-      0,
-    );
-
-    const summary = await this.getMonthlySummary(
-      now.getFullYear(),
-      now.getMonth() + 1,
-    );
-
-    await this.notifyTelegram(
-      `Kunlik statistika: bugun to'langan ${paidToday.length} ta, jami ${paidTotal} so'm. Joriy oy: to'langan ${summary.paid} so'm, kutilmoqda ${summary.pending} so'm, qarz ${summary.debt} so'm.`,
-    );
-  }
 }

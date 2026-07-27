@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports:
       # Faqat localhost'ga ochamiz - tashqariga nginx orqali chiqadi
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:4040:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000

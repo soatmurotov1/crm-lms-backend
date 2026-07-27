@@ -21,12 +21,9 @@ export class AuthService {
     return await this.jwtService.sign(payload);
   }
 
-  private async logAndNotifyLogin(
+  private async logLogin(
     email: string,
     ipAddress: string,
-    deviceName: string,
-    location: string,
-    userAgent: string,
     loginType: string = 'user',
   ): Promise<void> {
     try {
@@ -34,9 +31,6 @@ export class AuthService {
         data: {
           userEmail: email,
           ipAddress,
-          deviceName,
-          location,
-          userAgent,
           loginType,
           success: true,
         },
@@ -70,14 +64,7 @@ export class AuthService {
     }
 
     // Log login activity
-    await this.logAndNotifyLogin(
-      existEmail.email,
-      ipAddress,
-      payload.deviceName || 'N/A',
-      payload.location || 'N/A',
-      payload.userAgent || 'N/A',
-      'user',
-    );
+    await this.logLogin(existEmail.email, ipAddress, 'user');
 
     const accessToken = await this.generateToken({
       id: existEmail.id,
@@ -123,14 +110,7 @@ export class AuthService {
     }
 
     // Log login activity
-    await this.logAndNotifyLogin(
-      existEmail.email,
-      ipAddress,
-      payload.deviceName || 'N/A',
-      payload.location || 'N/A',
-      payload.userAgent || 'N/A',
-      'teacher',
-    );
+    await this.logLogin(existEmail.email, ipAddress, 'teacher');
 
     const accessToken = await this.generateToken({
       id: existEmail.id,
@@ -168,14 +148,7 @@ export class AuthService {
     }
 
     // Log login activity
-    await this.logAndNotifyLogin(
-      existEmail.email,
-      ipAddress,
-      payload.deviceName || 'N/A',
-      payload.location || 'N/A',
-      payload.userAgent || 'N/A',
-      'student',
-    );
+    await this.logLogin(existEmail.email, ipAddress, 'student');
 
     const accessToken = await this.generateToken({
       id: existEmail.id,
