@@ -1,18 +1,20 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { HomeworkStatus, Prisma } from '@prisma/client';
-import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateStudentDto } from './dto/create.students.dto';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
+import { normalizePhone } from 'src/common/utils/phone.util';
+import { VerificationService } from 'src/modules/auth/verification.service';
 
 @Injectable()
 export class StudentsService {
@@ -26,8 +28,8 @@ export class StudentsService {
 
   constructor(
     private prisma: PrismaService,
-    private mailerService: MailerService,
     private cloudinaryService: CloudinaryService,
+    private verificationService: VerificationService,
   ) {}
 
   async getMyGroups(currentUser: { id: number }) {
@@ -184,48 +186,54 @@ export class StudentsService {
 
   async createStudent(payload: CreateStudentDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
-    const normalizedEmail = payload.email.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
+
+    await this.ensurePhoneIsFree(normalizedPhone);
 
     if (file) {
       this.validateStudentPhoto(file);
       photoUrl = await this.cloudinaryService.uploadFile(file, 'students');
     }
 
-    const student = await this.prisma.student.create({
+    await this.prisma.student.create({
       data: {
         ...payload,
-        email: normalizedEmail,
+        phone: normalizedPhone,
         password: await hashPassword(plainPassword),
         photo: photoUrl,
         birth_date: new Date(payload.birth_date),
       },
     });
 
-    // Kirish ma'lumotlari talabaning o'z pochtasiga yuboriladi.
-    try {
-      await this.mailerService.sendEmail(
-        normalizedEmail,
-        normalizedEmail,
-        plainPassword,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Student created but email send failed: ${normalizedEmail}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      return {
-        success: true,
-        emailSent: false,
-        message: 'Student yaratildi, lekin email yuborilmadi',
-      };
-    }
+    // SMS ketmasa ham student yaratilgan bo'ladi.
+    const smsSent = await this.verificationService.sendCodeQuietly(
+      normalizedPhone,
+    );
 
     return {
       success: true,
-      emailSent: true,
-      message: 'Student successfully created',
+      smsSent,
+      message: smsSent
+        ? 'Student successfully created'
+        : 'Student yaratildi, lekin SMS yuborilmadi',
     };
+  }
+
+  private async ensurePhoneIsFree(phone: string, excludeId?: number) {
+    const existing = await this.prisma.student.findFirst({
+      where: {
+        phone,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        'Bu telefon raqami allaqachon ro\'yxatdan o\'tgan. Boshqa raqam kiriting',
+      );
+    }
   }
 
   private validateStudentPhoto(file: Express.Multer.File) {
@@ -305,8 +313,12 @@ export class StudentsService {
       data.fullName = payload.fullName.trim();
     }
 
-    if (payload.email && payload.email.trim() !== '') {
-      data.email = payload.email.trim();
+    if (payload.phone && payload.phone.trim() !== '') {
+      const normalizedPhone = normalizePhone(payload.phone);
+      if (normalizedPhone !== Student.phone) {
+        await this.ensurePhoneIsFree(normalizedPhone, id);
+      }
+      data.phone = normalizedPhone;
     }
 
     if (payload.password && payload.password.trim() !== '') {
@@ -345,7 +357,7 @@ export class StudentsService {
       select: {
         id: true,
         fullName: true,
-        email: true,
+        phone: true,
         birth_date: true,
         status: true,
       },

@@ -64,7 +64,7 @@ enum PaymentMethod {
 model User {
   id         Int        @id @default(autoincrement())
   fullName   String
-  email      String     @unique
+  phone      String     @unique
   photo      String?
   password   String
   position   String
@@ -89,7 +89,7 @@ model User {
 model Teacher {
   id         Int        @id @default(autoincrement())
   fullName   String
-  email      String     @unique
+  phone      String     @unique
   photo      String?
   password   String
   position   String
@@ -112,7 +112,7 @@ model Teacher {
 model Student {
   id         Int        @id @default(autoincrement())
   fullName   String
-  email      String     @unique
+  phone      String     @unique
   photo      String?
   password   String
   birth_date DateTime
@@ -334,7 +334,7 @@ model Rating {
 
 model LoginLog {
   id         Int      @id @default(autoincrement())
-  userEmail  String
+  userPhone  String
   ipAddress  String
   deviceName String?
   location   String?
@@ -342,6 +342,25 @@ model LoginLog {
   loginType  String   @default("user")
   success    Boolean  @default(true)
   created_at DateTime @default(now())
+}
+
+enum VerificationPurpose {
+  REGISTER
+  RESET_PASSWORD
+  CHANGE_PHONE
+}
+
+model VerificationCode {
+  id         Int                 @id @default(autoincrement())
+  phone      String
+  code       String
+  purpose    VerificationPurpose @default(REGISTER)
+  expiresAt  DateTime
+  attempts   Int                 @default(0)
+  verifiedAt DateTime?
+  created_at DateTime            @default(now())
+
+  @@index([phone, purpose])
 }
 
 model RefreshToken {

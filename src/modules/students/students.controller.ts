@@ -88,9 +88,14 @@ export class StudentsController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         password: { type: 'string' },
         birth_date: { type: 'string', example: '2026-01-02' },
+        status: {
+          type: 'string',
+          enum: ['ACTIVE', 'INACTIVE', 'FREEZE'],
+          nullable: true,
+        },
         photo: { type: 'string', format: 'binary', nullable: true },
       },
     },
@@ -134,9 +139,14 @@ export class StudentsController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         password: { type: 'string' },
         birth_date: { type: 'string', example: '2026-01-02' },
+        status: {
+          type: 'string',
+          enum: ['ACTIVE', 'INACTIVE', 'FREEZE'],
+          nullable: true,
+        },
         photo: { type: 'string', format: 'binary', nullable: true },
       },
     },

@@ -50,7 +50,7 @@ export class GroupsService {
             id: true,
             fullName: true,
             photo: true,
-            email: true,
+            phone: true,
           },
         },
       },

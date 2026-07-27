@@ -39,7 +39,7 @@ export class TeachersController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         password: { type: 'string' },
         position: { type: 'string' },
         experience: { type: 'number', example: 4 },
@@ -98,7 +98,7 @@ export class TeachersController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         password: { type: 'string' },
         position: { type: 'string' },
         experience: { type: 'number', example: 4 },

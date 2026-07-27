@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './common/prisma/prisma.module';
-import { MailerModule } from './common/email/mailer.module';
+import { SmsModule } from './common/sms/sms.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StudentsModule } from './modules/students/students.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
@@ -25,10 +25,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    SmsModule,
     AuthModule,
     UsersModule,
     TeachersModule,
-    MailerModule,
     StudentsModule,
     CourseModule,
     RoomsModule,

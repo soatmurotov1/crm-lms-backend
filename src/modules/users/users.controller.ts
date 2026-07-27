@@ -36,7 +36,7 @@ export class UsersController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         password: { type: 'string' },
         role: { type: 'string', enum: Object.values(Role) },
         position: { type: 'string' },
@@ -94,7 +94,7 @@ export class UsersController {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        email: { type: 'string' },
+        phone: { type: 'string', example: '+998901234567' },
         role: { type: 'string', enum: Object.values(Role) },
         position: { type: 'string' },
         address: { type: 'string', nullable: true },

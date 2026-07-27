@@ -1,25 +1,30 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UpdateUserDto } from './dto/update.user.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { MailerService } from 'src/common/email/mailer.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateUserDto } from './dto/create.users.dto';
 import { hashPassword } from 'src/common/bcrypt/bcrypt';
+import { normalizePhone } from 'src/common/utils/phone.util';
+import { VerificationService } from 'src/modules/auth/verification.service';
 
 @Injectable()
 export class UsersService {
-  private readonly logger = new Logger(UsersService.name);
-
   constructor(
     private prisma: PrismaService,
-    private mailerService: MailerService,
     private cloudinaryService: CloudinaryService,
+    private verificationService: VerificationService,
   ) {}
 
   async createUser(payload: CreateUserDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
-    const normalizedEmail = payload.email.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
+
+    await this.ensurePhoneIsFree(normalizedPhone);
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'users');
@@ -28,38 +33,42 @@ export class UsersService {
     await this.prisma.user.create({
       data: {
         ...payload,
-        email: normalizedEmail,
+        phone: normalizedPhone,
         password: await hashPassword(plainPassword),
         hire_date: new Date(payload.hire_date),
         photo: photoUrl,
       },
     });
 
-    // Email ketmasa ham foydalanuvchi yaratilgan bo'ladi, shuning uchun
+    // SMS ketmasa ham foydalanuvchi yaratilgan bo'ladi, shuning uchun
     // xatolik butun so'rovni yiqitmasligi kerak.
-    try {
-      await this.mailerService.sendEmail(
-        normalizedEmail,
-        normalizedEmail,
-        plainPassword,
-      );
-    } catch (error) {
-      this.logger.error(
-        `User created but email send failed: ${normalizedEmail}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      return {
-        success: true,
-        emailSent: false,
-        message: 'Foydalanuvchi yaratildi, lekin email yuborilmadi',
-      };
-    }
+    const smsSent = await this.verificationService.sendCodeQuietly(
+      normalizedPhone,
+    );
 
     return {
       success: true,
-      emailSent: true,
-      message: 'User successfully created',
+      smsSent,
+      message: smsSent
+        ? 'User successfully created'
+        : 'Foydalanuvchi yaratildi, lekin SMS yuborilmadi',
     };
+  }
+
+  private async ensurePhoneIsFree(phone: string, excludeId?: number) {
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        phone,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        "Bu telefon raqami allaqachon ro'yxatdan o'tgan. Boshqa raqam kiriting",
+      );
+    }
   }
 
   async getAllUsers() {
@@ -99,6 +108,14 @@ export class UsersService {
     }
 
     let photoUrl: string | null = user.photo;
+    let normalizedPhone: string | undefined;
+
+    if (payload.phone && payload.phone.trim() !== '') {
+      normalizedPhone = normalizePhone(payload.phone);
+      if (normalizedPhone !== user.phone) {
+        await this.ensurePhoneIsFree(normalizedPhone, id);
+      }
+    }
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'users');
@@ -108,6 +125,7 @@ export class UsersService {
       where: { id },
       data: {
         ...payload,
+        phone: normalizedPhone,
         photo: photoUrl,
       },
     });

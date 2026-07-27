@@ -1,6 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  normalizePhone,
+  PHONE_FORMAT_MESSAGE,
+  PHONE_REGEX,
+} from 'src/common/utils/phone.util';
 
 const emptyToUndefined = ({ value }: { value: unknown }) => {
   if (typeof value !== 'string') return value;
@@ -15,11 +20,15 @@ export class UpdateTeachersDto {
   @IsString()
   fullName?: string;
 
-  @ApiProperty({ required: false })
-  @Transform(emptyToUndefined)
+  @ApiProperty({ required: false, example: '+998901234567' })
+  @Transform(({ value }) =>
+    value === undefined || value === null || String(value).trim() === ''
+      ? undefined
+      : normalizePhone(value),
+  )
   @IsOptional()
-  @IsEmail()
-  email?: string;
+  @Matches(PHONE_REGEX, { message: PHONE_FORMAT_MESSAGE })
+  phone?: string;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)

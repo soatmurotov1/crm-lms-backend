@@ -1,10 +1,9 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { MailerService } from 'src/common/email/mailer.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateTeacherDto } from './dto/create.teachers.dto';
@@ -12,21 +11,23 @@ import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
 import { UserStatus } from '@prisma/client';
 import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
+import { normalizePhone } from 'src/common/utils/phone.util';
+import { VerificationService } from 'src/modules/auth/verification.service';
 
 @Injectable()
 export class TeachersService {
-  private readonly logger = new Logger(TeachersService.name);
-
   constructor(
     private prisma: PrismaService,
-    private mailerService: MailerService,
     private cloudinaryService: CloudinaryService,
+    private verificationService: VerificationService,
   ) {}
 
   async createTeacher(payload: CreateTeacherDto, file?: Express.Multer.File) {
     let photoUrl: string | null = null;
-    const normalizedEmail = payload.email.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
+
+    await this.ensurePhoneIsFree(normalizedPhone);
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'teachers');
@@ -35,39 +36,41 @@ export class TeachersService {
     await this.prisma.teacher.create({
       data: {
         ...payload,
-        email: normalizedEmail,
+        phone: normalizedPhone,
         experience: Number(payload.experience),
         password: await hashPassword(plainPassword),
         photo: photoUrl,
       },
     });
 
-    // Kirish ma'lumotlari o'qituvchining o'z pochtasiga yuboriladi.
-    // Email ketmasa ham o'qituvchi yaratilgan bo'ladi, shuning uchun
-    // xatolik butun so'rovni yiqitmasligi kerak.
-    try {
-      await this.mailerService.sendEmail(
-        normalizedEmail,
-        normalizedEmail,
-        plainPassword,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Teacher created but email send failed: ${normalizedEmail}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      return {
-        success: true,
-        emailSent: false,
-        message: "O'qituvchi yaratildi, lekin email yuborilmadi",
-      };
-    }
+    // SMS ketmasa ham o'qituvchi yaratilgan bo'ladi.
+    const smsSent = await this.verificationService.sendCodeQuietly(
+      normalizedPhone,
+    );
 
     return {
       success: true,
-      emailSent: true,
-      message: 'Teacher successfully created',
+      smsSent,
+      message: smsSent
+        ? 'Teacher successfully created'
+        : "O'qituvchi yaratildi, lekin SMS yuborilmadi",
     };
+  }
+
+  private async ensurePhoneIsFree(phone: string, excludeId?: number) {
+    const existing = await this.prisma.teacher.findFirst({
+      where: {
+        phone,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        "Bu telefon raqami allaqachon ro'yxatdan o'tgan. Boshqa raqam kiriting",
+      );
+    }
   }
 
   async getAllTeachers() {
@@ -102,7 +105,7 @@ export class TeachersService {
       select: {
         id: true,
         fullName: true,
-        email: true,
+        phone: true,
         photo: true,
         position: true,
         experience: true,
@@ -133,6 +136,14 @@ export class TeachersService {
       throw new NotFoundException(`Not found teacherId ${id}`);
     }
     let photoUrl: string | null = teacher.photo;
+    let normalizedPhone: string | undefined;
+
+    if (payload.phone && payload.phone.trim() !== '') {
+      normalizedPhone = normalizePhone(payload.phone);
+      if (normalizedPhone !== teacher.phone) {
+        await this.ensurePhoneIsFree(normalizedPhone, id);
+      }
+    }
 
     if (file) {
       photoUrl = await this.cloudinaryService.uploadFile(file, 'teachers');
@@ -141,6 +152,7 @@ export class TeachersService {
       where: { id },
       data: {
         ...payload,
+        phone: normalizedPhone,
         experience: payload.experience ? Number(payload.experience) : undefined,
         photo: photoUrl,
       },

@@ -3,6 +3,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
+import { VerificationService } from './verification.service';
+import { SmsModule } from 'src/common/sms/sms.module';
 
 @Module({
   imports: [
@@ -22,8 +24,10 @@ import { PrismaModule } from 'src/common/prisma/prisma.module';
       },
     }),
     PrismaModule,
+    SmsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, VerificationService],
+  exports: [VerificationService],
 })
 export class AuthModule {}

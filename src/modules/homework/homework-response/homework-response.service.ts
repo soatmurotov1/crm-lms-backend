@@ -116,7 +116,7 @@ export class HomeworkResponseService {
           select: {
             id: true,
             fullName: true,
-            email: true,
+            phone: true,
           },
         },
       },

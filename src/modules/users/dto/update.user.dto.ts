@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, Matches } from 'class-validator';
 import { Role } from '@prisma/client';
 import { IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  normalizePhone,
+  PHONE_FORMAT_MESSAGE,
+  PHONE_REGEX,
+} from 'src/common/utils/phone.util';
 
 export class UpdateUserDto {
   @ApiProperty({ required: false })
@@ -9,10 +15,11 @@ export class UpdateUserDto {
   @IsString()
   fullName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: '+998901234567' })
   @IsOptional()
-  @IsEmail()
-  email?: string;
+  @Transform(({ value }) => normalizePhone(value))
+  @Matches(PHONE_REGEX, { message: PHONE_FORMAT_MESSAGE })
+  phone?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

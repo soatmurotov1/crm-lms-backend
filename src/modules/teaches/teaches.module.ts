@@ -3,11 +3,11 @@ import { TeachersController } from './teaches.controller';
 import { TeachersService } from './teaches.service';
 import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
 import { PrismaModule } from 'src/common/prisma/prisma.module';
-import { MailerService } from 'src/common/email/mailer.service';
+import { AuthModule } from 'src/modules/auth/auth.module';
 
 @Module({
-  imports: [CloudinaryModule, PrismaModule],
+  imports: [CloudinaryModule, PrismaModule, AuthModule],
   controllers: [TeachersController],
-  providers: [TeachersService, MailerService],
+  providers: [TeachersService],
 })
 export class TeachersModule {}

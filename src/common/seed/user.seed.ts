@@ -2,30 +2,31 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword } from '../bcrypt/bcrypt';
 import { Role } from '@prisma/client';
+import { normalizePhone } from '../utils/phone.util';
 
 @Injectable()
 export class UserSeeder implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
-    const email = process.env.SUPERADMIN_EMAIL;
+    const phone = normalizePhone(process.env.SUPERADMIN_PHONE);
     const password = process.env.SUPERADMIN_PASSWORD;
 
-    if (!email || !password) {
+    if (!phone || !password) {
       Logger.warn(
-        'SUPERADMIN_EMAIL yoki SUPERADMIN_PASSWORD sozlanmagan - seeding o\'tkazib yuborildi',
+        "SUPERADMIN_PHONE yoki SUPERADMIN_PASSWORD sozlanmagan - seeding o'tkazib yuborildi",
       );
       return;
     }
 
     const existUser = await this.prisma.user.findFirst({
-      where: { email },
+      where: { phone },
     });
     if (!existUser) {
       await this.prisma.user.create({
         data: {
           fullName: process.env.SUPERADMIN_FULLNAME || 'SuperAdmin',
-          email,
+          phone,
           password: await hashPassword(password),
           role: (process.env.SUPERADMIN_ROLE || 'SUPERADMIN') as Role,
           position: process.env.SUPERADMIN_POSIT || `${Role.ADMIN}`,

@@ -35,8 +35,6 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 # `prisma db push` / `migrate deploy` konteyner ichida ishlashi uchun
 COPY --from=builder /app/prisma.config.ts ./
-# mailer template'lari: process.cwd()/template dan o'qiladi
-COPY --from=builder /app/template ./template
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs \

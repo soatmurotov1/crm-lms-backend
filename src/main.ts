@@ -14,7 +14,6 @@ async function bootstrap() {
     origin: [
       'https://crm-lms-frontend.vercel.app',
       'https://abrorbek.me',
-      'https://www.abrorbek.me',
       'http://localhost:4040',
       'http://localhost:5173',
       'http://localhost:5174',
@@ -51,14 +50,14 @@ async function bootstrap() {
     },
   });
 
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 4040;
   const NODE_ENV = process.env.NODE_ENV || 'development';
 
-  await app.listen(PORT, '0.0.0.0', () => {
+  await app.listen(PORT, () => {
     logger.log(`
     🚀 Application is running!
-    📡 Server: http://0.0.0.0:${PORT}
-    🔗 API Docs: http://0.0.0.0:${PORT}/api
+    📡 Server: http://localhost:${PORT}
+    🔗 Swagger: http://localhost:${PORT}/api
     🌍 Environment: ${NODE_ENV}
     `);
   });
