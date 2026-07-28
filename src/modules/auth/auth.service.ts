@@ -85,6 +85,14 @@ export class AuthService {
       );
     }
 
+    // Raqam haqiqatan ham foydalanuvchiniki ekanini SMS kod bilan tasdiqlaymiz.
+    // Boshqa tekshiruvlardan keyin turadi: xato forma kodni behuda sarflamasin.
+    await this.verificationService.verifyAndConsume(
+      phone,
+      payload.code,
+      VerificationPurpose.REGISTER,
+    );
+
     const student = await this.prisma.student.create({
       data: {
         fullName: payload.fullName.trim(),

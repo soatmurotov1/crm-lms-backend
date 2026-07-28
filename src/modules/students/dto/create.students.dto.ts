@@ -1,6 +1,7 @@
-import { IsString, IsOptional, Matches } from 'class-validator';
+import { IsString, IsOptional, Matches, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import { UserStatus } from '@prisma/client';
 import {
   normalizePhone,
   PHONE_FORMAT_MESSAGE,
@@ -24,6 +25,14 @@ export class CreateStudentDto {
   @ApiProperty()
   @IsString()
   birth_date: string;
+
+  @ApiProperty({ required: false, enum: UserStatus })
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
+  @IsOptional()
+  @IsEnum(UserStatus)
+  status?: UserStatus;
 
   @ApiProperty({ required: false })
   @IsOptional()

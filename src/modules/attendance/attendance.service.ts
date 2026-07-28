@@ -1,10 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { Role } from '@prisma/client';
+import { AttendanceStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
+  /**
+   * Eski mijozlar faqat `isPresent` yuboradi, yangilari `status`.
+   * Ikkalasini bir-biriga moslab qaytaramiz.
+   */
+  private resolveAttendanceState(payload: {
+    isPresent?: boolean;
+    status?: AttendanceStatus;
+  }) {
+    if (payload.status) {
+      return {
+        status: payload.status,
+        isPresent: payload.status !== AttendanceStatus.ABSENT,
+      };
+    }
+
+    const isPresent = Boolean(payload.isPresent);
+    return {
+      status: isPresent ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT,
+      isPresent,
+    };
+  }
+
   constructor(private prisma: PrismaService) {}
 
   async getAttendanceByLesson(lessonId: number) {
@@ -23,6 +45,8 @@ export class AttendanceService {
       },
       select: {
         isPresent: true,
+        status: true,
+        comment: true,
         student: {
           select: {
             id: true,
@@ -131,9 +155,14 @@ export class AttendanceService {
       throw new NotFoundException('Student not found with this id');
     }
 
+    const state = this.resolveAttendanceState(payload);
+
     await this.prisma.attendance.create({
       data: {
-        ...payload,
+        lessonId: payload.lessonId,
+        studentId: payload.studentId,
+        comment: payload.comment,
+        ...state,
         teacherId: currentUser.role == Role.TEACHER ? currentUser.id : null,
         userId: currentUser.role != Role.TEACHER ? currentUser.id : null,
       },
@@ -183,15 +212,23 @@ export class AttendanceService {
     ) {
       throw new NotFoundException('Bu sening darsing emas');
     }
+    const state = this.resolveAttendanceState(payload);
+
     await this.prisma.attendance.update({
       where: {
         id: existAttendance.id,
       },
       data: {
-        isPresent: payload.isPresent,
+        ...state,
+        ...(payload.comment !== undefined ? { comment: payload.comment } : {}),
         teacherId: currentUser.role == Role.TEACHER ? currentUser.id : null,
         userId: currentUser.role != Role.TEACHER ? currentUser.id : null,
       },
     });
+
+    return {
+      success: true,
+      message: 'Attendance updated successfully',
+    };
   }
 }

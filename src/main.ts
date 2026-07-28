@@ -9,17 +9,38 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // CORS configuration
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+  /** Ishlab chiqarishda ochiq bo'lgan domenlar. */
+  const ALLOWED_ORIGINS = [
+    'https://crm-lms-frontend.vercel.app',
+    'https://abrorbek.me',
+    'http://localhost:4040',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+  ];
+
+  /**
+   * Vite band portni ko'rsa o'zi keyingisiga o'tadi (5175, 5176, ...), shuning
+   * uchun development'da har qanday localhost portiga ruxsat beramiz. Aks holda
+   * frontend "Backendga ulanib bo'lmadi" deb xato beradi - aslida bu CORS.
+   */
+  const LOCALHOST_ORIGIN = /^https?:\/\/localhost:\d+$/;
+
   app.enableCors({
-    origin: [
-      'https://crm-lms-frontend.vercel.app',
-      'https://abrorbek.me',
-      'http://localhost:4040',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://127.0.0.1:4040',
-      'http://127.0.0.1:3000',
-    ],
+    origin: (origin, callback) => {
+      // Origin'siz so'rovlar (curl, mobil ilova, server-to-server) o'tadi.
+      if (!origin) return callback(null, true);
+
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      if (!IS_PRODUCTION && LOCALHOST_ORIGIN.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Xato tashlamaymiz: shunchaki ruxsat sarlavhasi qo'yilmaydi va
+      // brauzerning o'zi so'rovni bloklaydi (500 o'rniga toza CORS xatosi).
+      return callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -50,7 +71,7 @@ async function bootstrap() {
     },
   });
 
-  const PORT = process.env.PORT || 4040;
+  const PORT = process.env.PORT || 4041;
   const NODE_ENV = process.env.NODE_ENV || 'development';
 
   await app.listen(PORT, () => {

@@ -61,6 +61,62 @@ enum PaymentMethod {
   MANUAL
 }
 
+/// Davomat holati. `isPresent` eski kod bilan mos ishlashi uchun saqlanadi,
+/// `status` esa "kechikdi" / "sababli" kabi holatlarni ham ifodalaydi.
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+/// Xabarnoma kimga mo'ljallangani.
+enum NotificationAudience {
+  ALL
+  ADMINS
+  TEACHERS
+  STUDENTS
+  GROUP
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  PAYMENT
+  LESSON
+  HOMEWORK
+  SYSTEM
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  ANSWERED
+  CLOSED
+}
+
+enum SupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum GradeType {
+  LESSON
+  HOMEWORK
+  EXAM
+  BEHAVIOR
+  OTHER
+}
+
 model User {
   id         Int        @id @default(autoincrement())
   fullName   String
@@ -84,6 +140,7 @@ model User {
   studentGroups   StudentGroup[]
   exams           Exam[]
   examResults     ExamResult[]
+  grades          Grade[]
 }
 
 model Teacher {
@@ -107,6 +164,7 @@ model Teacher {
   homeworkResults HomeworkResult[]
   exams           Exam[]
   examResults     ExamResult[]
+  grades          Grade[]
 }
 
 model Student {
@@ -127,6 +185,7 @@ model Student {
   homeworkResponses HomeworkResponse[]
   examResponses     ExamResponse[]
   examResults       ExamResult[]
+  grades            Grade[]
 }
 
 model Course {
@@ -171,14 +230,16 @@ model Group {
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
 
-  studentGroup StudentGroup[]
-  payments     Payment[]
-  teacher      Teacher        @relation(fields: [teacherId], references: [id])
-  user         User           @relation(fields: [userId], references: [id])
-  room         Room           @relation(fields: [roomId], references: [id])
-  course       Course         @relation(fields: [courseId], references: [id])
-  lessons      Lesson[]
-  exams        Exam[]
+  studentGroup  StudentGroup[]
+  payments      Payment[]
+  teacher       Teacher        @relation(fields: [teacherId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [id])
+  course        Course         @relation(fields: [courseId], references: [id])
+  lessons       Lesson[]
+  exams         Exam[]
+  grades        Grade[]
+  notifications Notification[]
 
   @@unique([courseId, name])
 }
@@ -236,17 +297,21 @@ model Lesson {
   homework     Homework[]
   lessonVideos LessonVideo[]
   ratings      Rating[]
+  grades       Grade[]
+  exams        Exam[]
 }
 
 model Attendance {
-  id         Int      @id @default(autoincrement())
+  id         Int              @id @default(autoincrement())
   lessonId   Int
   userId     Int?
   teacherId  Int?
   studentId  Int
   isPresent  Boolean
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  status     AttendanceStatus @default(ABSENT)
+  comment    String?
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
 
   teacher Teacher? @relation(fields: [teacherId], references: [id])
   user    User?    @relation(fields: [userId], references: [id])
@@ -255,17 +320,17 @@ model Attendance {
 }
 
 model Homework {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   lessonId     Int
   userId       Int?
   groupId      Int
   teacherId    Int?
   title        String
   file         String?
-  durationTime Int      @default(16)
+  durationTime Int       @default(16)
   dueDate      DateTime?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
   teacher           Teacher?           @relation(fields: [teacherId], references: [id])
   user              User?              @relation(fields: [userId], references: [id])
@@ -364,23 +429,26 @@ model VerificationCode {
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
-  userId    Int
-  userType  String
-  expiresAt DateTime
+  id         Int      @id @default(autoincrement())
+  token      String   @unique
+  userId     Int
+  userType   String
+  expiresAt  DateTime
   created_at DateTime @default(now())
 }
 
 model Exam {
   id           Int       @id @default(autoincrement())
   groupId      Int
+  lessonId     Int
   courseId     Int?
   teacherId    Int?
   userId       Int?
   title        String
   description  String?
   file         String?
+  startAt      DateTime
+  endAt        DateTime
   dueDate      DateTime?
   durationTime Int       @default(60)
   maxScore     Int       @default(100)
@@ -388,12 +456,14 @@ model Exam {
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
 
-  group       Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  course      Course?       @relation(fields: [courseId], references: [id])
-  teacher     Teacher?      @relation(fields: [teacherId], references: [id])
-  user        User?         @relation(fields: [userId], references: [id])
-  responses   ExamResponse[]
-  results     ExamResult[]
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  course    Course?        @relation(fields: [courseId], references: [id])
+  teacher   Teacher?       @relation(fields: [teacherId], references: [id])
+  user      User?          @relation(fields: [userId], references: [id])
+  responses ExamResponse[]
+  results   ExamResult[]
+  grades    Grade[]
 }
 
 model ExamResponse {
@@ -401,6 +471,7 @@ model ExamResponse {
   examId     Int
   studentId  Int
   title      String?
+  comment    String?
   file       String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -423,11 +494,180 @@ model ExamResult {
   created_at DateTime       @default(now())
   updated_at DateTime       @updatedAt
 
-  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam    Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   teacher Teacher? @relation(fields: [teacherId], references: [id])
   user    User?    @relation(fields: [userId], references: [id])
 
   @@unique([examId, studentId])
 }
-    
+
+// ============================================================================
+// Superadmin bo'limlari: tashkilotlar, tariflar va obunalar.
+//
+// Diqqat: bu modellar mavjud ma'lumotlarni ko'p-tashkilotli (multi-tenant)
+// qilib bo'lmaydi — Group / Student / Payment kabi modellarga organizationId
+// qo'shilmagan. Organization hozircha ro'yxat va obuna hisobini yuritadi.
+// ============================================================================
+
+model Organization {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  phone        String?
+  address      String?
+  logo         String?
+  directorName String?
+  description  String?
+  status       Status   @default(ACTIVE)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  subscriptions  Subscription[]
+  supportTickets SupportTicket[]
+  notifications  Notification[]
+}
+
+/// Tarif — tashkilot to'laydigan obuna rejasi.
+model Plan {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  price         Decimal
+  durationMonth Int      @default(1)
+  maxStudents   Int?
+  maxTeachers   Int?
+  maxGroups     Int?
+  description   String?
+  features      String[]
+  status        Status   @default(ACTIVE)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id             Int                @id @default(autoincrement())
+  organizationId Int
+  planId         Int
+  startDate      DateTime           @default(now())
+  endDate        DateTime
+  amount         Decimal
+  status         SubscriptionStatus @default(PENDING)
+  paidAt         DateTime?
+  canceledAt     DateTime?
+  comment        String?
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([status, endDate])
+}
+
+// ============================================================================
+// Xabarnomalar
+// ============================================================================
+
+model Notification {
+  id             Int                  @id @default(autoincrement())
+  title          String
+  message        String
+  type           NotificationType     @default(INFO)
+  audience       NotificationAudience @default(ALL)
+  groupId        Int?
+  organizationId Int?
+  createdByRole  Role?
+  createdById    Int?
+  createdByName  String?
+  created_at     DateTime             @default(now())
+
+  group        Group?             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  organization Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reads        NotificationRead[]
+
+  @@index([audience, created_at])
+}
+
+/// Foydalanuvchilar uch xil jadvalda (User / Teacher / Student) bo'lgani uchun
+/// o'qilganlik belgisi rol + id juftligi bilan saqlanadi.
+model NotificationRead {
+  id             Int      @id @default(autoincrement())
+  notificationId Int
+  recipientRole  Role
+  recipientId    Int
+  readAt         DateTime @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, recipientRole, recipientId])
+}
+
+// ============================================================================
+// Qo'llab-quvvatlash (murojaatlar)
+// ============================================================================
+
+model SupportTicket {
+  id             Int             @id @default(autoincrement())
+  organizationId Int?
+  subject        String
+  message        String
+  status         SupportStatus   @default(OPEN)
+  priority       SupportPriority @default(NORMAL)
+  createdByRole  Role
+  createdById    Int
+  createdByName  String?
+  contactPhone   String?
+  closedAt       DateTime?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  messages     SupportMessage[]
+
+  @@index([status, created_at])
+}
+
+model SupportMessage {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  senderRole Role
+  senderId   Int
+  senderName String?
+  message    String
+  created_at DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// Baholar — uy vazifa va imtihondan tashqari qo'yiladigan baholar uchun.
+// ============================================================================
+
+model Grade {
+  id         Int       @id @default(autoincrement())
+  studentId  Int
+  groupId    Int
+  lessonId   Int?
+  examId     Int?
+  teacherId  Int?
+  userId     Int?
+  type       GradeType @default(LESSON)
+  score      Int
+  maxScore   Int       @default(100)
+  comment    String?
+  date       DateTime  @default(now())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  lesson  Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  exam    Exam?    @relation(fields: [examId], references: [id], onDelete: SetNull)
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+
+  @@index([studentId, groupId])
+  @@index([groupId, date])
+}

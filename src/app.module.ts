@@ -16,6 +16,13 @@ import { HomeworkModule } from './modules/homework/homework.module';
 import { LessonVideosModule } from './modules/lesson-videos/lesson-videos.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { PlansModule } from './modules/plans/plans.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SupportModule } from './modules/support/support.module';
+import { GradesModule } from './modules/grades/grades.module';
+import { ExamsModule } from './modules/exams/exams.module';
 
 @Module({
   imports: [
@@ -38,6 +45,13 @@ import { ScheduleModule } from '@nestjs/schedule';
     HomeworkModule,
     LessonVideosModule,
     PaymentsModule,
+    OrganizationsModule,
+    PlansModule,
+    SubscriptionsModule,
+    NotificationsModule,
+    SupportModule,
+    GradesModule,
+    ExamsModule,
   ],
   controllers: [],
   providers: [UserSeeder],

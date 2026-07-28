@@ -1,4 +1,4 @@
-import { IsString, Matches, MinLength } from 'class-validator';
+import { IsString, Length, Matches, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
@@ -10,6 +10,9 @@ import {
 /**
  * Ochiq ro'yxatdan o'tish. Bu yo'l bilan kelgan foydalanuvchi doim STUDENT
  * bo'ladi - rolni tashqaridan berib bo'lmaydi.
+ *
+ * Raqam egasi ekanini isbotlash uchun avval `POST /auth/send-code` chaqirilib,
+ * SMS kod olinadi va shu yerda `code` sifatida yuboriladi.
  */
 export class RegisterDto {
   @ApiProperty({ example: 'Aliyev Ali Valiyevich' })
@@ -30,4 +33,9 @@ export class RegisterDto {
   @IsString()
   @MinLength(6, { message: 'Parol kamida 6 ta belgidan iborat bo\'lsin' })
   password: string;
+
+  @ApiProperty({ example: '917810', description: 'SMS orqali kelgan 6 xonali kod' })
+  @Transform(({ value }) => String(value ?? '').trim())
+  @Length(6, 6, { message: "Tasdiqlash kodi 6 xonali bo'lishi kerak" })
+  code: string;
 }
