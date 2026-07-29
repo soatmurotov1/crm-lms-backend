@@ -25,7 +25,10 @@ import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
-import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import {
+  CloudinaryService,
+  DOCUMENT_MIME_TYPES,
+} from 'src/common/cloudinary/cloudinary.service';
 import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
@@ -157,7 +160,7 @@ export class ExamsController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams');
+      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams', DOCUMENT_MIME_TYPES);
     }
     return this.examsService.createExam(payload, req['user'], fileUrl);
   }
@@ -179,7 +182,7 @@ export class ExamsController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams');
+      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams', DOCUMENT_MIME_TYPES);
     }
     return this.examsService.updateExam(examId, payload, req['user'], fileUrl);
   }

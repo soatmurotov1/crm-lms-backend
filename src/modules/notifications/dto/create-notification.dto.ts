@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { NotificationAudience, NotificationType } from '@prisma/client';
+import { NotificationAudience, NotificationType, Role } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
@@ -36,9 +36,28 @@ export class CreateNotificationDto {
   @IsInt()
   groupId?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, description: 'audience=ORGANIZATION bo‘lsa' })
   @Type(() => Number)
   @IsOptional()
   @IsInt()
   organizationId?: number;
+
+  @ApiProperty({
+    required: false,
+    enum: Role,
+    description: 'audience=USER bo‘lsa — qabul qiluvchining roli',
+  })
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsEnum(Role)
+  recipientRole?: Role;
+
+  @ApiProperty({
+    required: false,
+    description: 'audience=USER bo‘lsa — qabul qiluvchining id raqami',
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  recipientId?: number;
 }

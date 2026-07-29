@@ -1,15 +1,47 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api');
 
   const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+  /**
+   * Oldimizda nechta ishonchli reverse proxy turganini aniq aytamiz.
+   * Shundagina Express `X-Forwarded-For` ning FAQAT o'sha proxy qo'shgan
+   * qismiga ishonadi va `req.ip` ni to'g'ri hisoblaydi. Busiz mijoz
+   * sarlavhani o'zi yasab, IP bo'yicha cheklovlarni aylanib o'tadi.
+   * Proxy soni boshqacha bo'lsa TRUST_PROXY bilan sozlanadi.
+   */
+  app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
+
+  /**
+   * Minimal xavfsizlik sarlavhalari. Bu API JSON qaytaradi, shuning uchun
+   * to'liq helmet to'plami shart emas — MIME sniffing, iframe ichiga olish va
+   * referrer sizib chiqishini to'sish yetarli.
+   */
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.removeHeader('X-Powered-By');
+
+    if (IS_PRODUCTION) {
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains',
+      );
+    }
+
+    next();
+  });
 
   /** Ishlab chiqarishda ochiq bo'lgan domenlar. */
   const ALLOWED_ORIGINS = [
@@ -56,20 +88,31 @@ async function bootstrap() {
     }),
   );
 
-  const config = new DocumentBuilder()
-    .setTitle('EduCenter')
-    .setDescription('EduCenter - talim boshqaruv tizimi API')
-    .setVersion('1.1.1')
-    .addBearerAuth()
-    .build();
+  /**
+   * Swagger butun API sirtini (endpointlar, DTO maydonlari, rollar) ochib
+   * beradi. Ishlab chiqarishda u yopiq bo'ladi; kerak bo'lsa serverda
+   * SWAGGER_ENABLED=true qo'yib ochish mumkin.
+   */
+  const SWAGGER_ENABLED = IS_PRODUCTION
+    ? process.env.SWAGGER_ENABLED === 'true'
+    : true;
 
-  const document = SwaggerModule.createDocument(app, config);
+  if (SWAGGER_ENABLED) {
+    const config = new DocumentBuilder()
+      .setTitle('EduCenter')
+      .setDescription('EduCenter - talim boshqaruv tizimi API')
+      .setVersion('1.1.1')
+      .addBearerAuth()
+      .build();
 
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+    const document = SwaggerModule.createDocument(app, config);
+
+    SwaggerModule.setup('api', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+  }
 
   const PORT = process.env.PORT || 4041;
   const NODE_ENV = process.env.NODE_ENV || 'development';

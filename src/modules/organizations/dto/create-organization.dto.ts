@@ -1,7 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Status } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 import {
   normalizePhone,
   PHONE_FORMAT_MESSAGE,
@@ -19,15 +25,35 @@ export class CreateOrganizationDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ required: false, example: '+998901234567' })
+  @ApiProperty({
+    example: '+998901234567',
+    description: 'Tashkilot admini shu raqam bilan tizimga kiradi',
+  })
   @Transform(({ value }) =>
     value === undefined || value === null || String(value).trim() === ''
       ? undefined
       : normalizePhone(value),
   )
-  @IsOptional()
   @Matches(PHONE_REGEX, { message: PHONE_FORMAT_MESSAGE })
-  phone?: string;
+  phone: string;
+
+  @ApiProperty({
+    example: 'Parol123',
+    description: 'Tashkilot admini hisobining paroli',
+  })
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(6, { message: "Parol kamida 6 ta belgidan iborat bo'lishi kerak" })
+  password: string;
+
+  @ApiProperty({
+    required: false,
+    description: "Admin hisobining F.I.O.'si. Bo'sh bo'lsa rahbar ismi olinadi",
+  })
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  adminName?: string;
 
   @ApiProperty({ required: false })
   @Transform(emptyToUndefined)

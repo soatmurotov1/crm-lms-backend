@@ -81,7 +81,7 @@ export class LessonVideosController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'lesson-videos');
+      fileUrl = await this.cloudinaryService.uploadVideo(file);
     }
 
     return this.lessonVideosService.createLessonVideo(

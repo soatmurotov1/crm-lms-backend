@@ -28,7 +28,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { HomeworkStatus, Role } from '@prisma/client';
 import { Roles } from 'src/common/guard/decarator.roles';
-import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import {
+  CloudinaryService,
+  DOCUMENT_MIME_TYPES,
+} from 'src/common/cloudinary/cloudinary.service';
 import { HomeworkStatusDto } from './dto/homework.status.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
 
@@ -104,7 +107,7 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks');
+      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
     }
     return this.homeworkService.createHomework(payload, req['user'], fileUrl);
   }
@@ -142,7 +145,7 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks');
+      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
     }
     return this.homeworkService.updateHomework(
       homeworkId,
@@ -185,7 +188,7 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks');
+      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
     }
     return this.homeworkService.updateHomeworkByTeacher(
       homeworkId,

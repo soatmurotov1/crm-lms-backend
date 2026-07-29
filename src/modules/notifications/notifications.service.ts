@@ -1,9 +1,10 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { NotificationAudience, Role } from '@prisma/client';
+import { NotificationAudience, Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 
@@ -16,13 +17,19 @@ const ADMIN_ROLES: Role[] = [
   Role.ADMINSTRATOR,
 ];
 
+/** Xabarnomalarni ko'rsatishda doim biriktiriladigan bog'liq ma'lumotlar. */
+const RELATION_INCLUDE = {
+  group: { select: { id: true, name: true } },
+  organization: { select: { id: true, name: true } },
+} satisfies Prisma.NotificationInclude;
+
 @Injectable()
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Foydalanuvchi roliga mos xabarnomalar. Talaba uchun o'z guruhiga
-   * yuborilganlari ham qo'shiladi.
+   * Foydalanuvchi roliga mos xabarnomalar. Bularga o'z guruhiga, o'z
+   * tashkilotiga va shaxsan o'ziga yuborilganlar ham kiradi.
    */
   async getMine(currentUser: CurrentUser, limit = 50) {
     const audiences: NotificationAudience[] = [NotificationAudience.ALL];
@@ -36,11 +43,17 @@ export class NotificationsService {
     }
 
     const groupIds = await this.getGroupIdsForUser(currentUser);
+    const organizationId = await this.getOrganizationIdForUser(currentUser);
 
     const notifications = await this.prisma.notification.findMany({
       where: {
         OR: [
           { audience: { in: audiences } },
+          {
+            audience: NotificationAudience.USER,
+            recipientRole: currentUser.role,
+            recipientId: currentUser.id,
+          },
           ...(groupIds.length
             ? [
                 {
@@ -49,10 +62,18 @@ export class NotificationsService {
                 },
               ]
             : []),
+          ...(organizationId
+            ? [
+                {
+                  audience: NotificationAudience.ORGANIZATION,
+                  organizationId,
+                },
+              ]
+            : []),
         ],
       },
       include: {
-        group: { select: { id: true, name: true } },
+        ...RELATION_INCLUDE,
         reads: {
           where: {
             recipientRole: currentUser.role,
@@ -82,7 +103,7 @@ export class NotificationsService {
   async getAll(limit = 100) {
     const notifications = await this.prisma.notification.findMany({
       include: {
-        group: { select: { id: true, name: true } },
+        ...RELATION_INCLUDE,
         _count: { select: { reads: true } },
       },
       orderBy: { created_at: 'desc' },
@@ -93,7 +114,9 @@ export class NotificationsService {
   }
 
   async create(payload: CreateNotificationDto, currentUser: CurrentUser) {
-    if (payload.audience === NotificationAudience.GROUP && !payload.groupId) {
+    const audience = payload.audience ?? NotificationAudience.ALL;
+
+    if (audience === NotificationAudience.GROUP && !payload.groupId) {
       throw new NotFoundException('Guruh tanlanmagan');
     }
 
@@ -116,13 +139,67 @@ export class NotificationsService {
       }
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      payload.audience !== NotificationAudience.GROUP
-    ) {
-      throw new ForbiddenException(
-        "O'qituvchi faqat o'z guruhiga xabar yubora oladi",
+    /*
+      O'qituvchi butun tizimga xabar yubora olmaydi. Lekin o'z guruhidan
+      tashqari, o'sha guruhlardagi aniq bir o'quvchiga ham yozishi kerak —
+      masalan uy vazifasi yoki davomat bo'yicha shaxsiy eslatma.
+    */
+    if (currentUser.role === Role.TEACHER) {
+      if (audience === NotificationAudience.USER) {
+        if (payload.recipientRole !== Role.STUDENT) {
+          throw new ForbiddenException(
+            "O'qituvchi faqat o'z o'quvchisiga xabar yubora oladi",
+          );
+        }
+
+        await this.ensureStudentIsInTeacherGroup(
+          Number(payload.recipientId),
+          currentUser.id,
+        );
+      } else if (audience !== NotificationAudience.GROUP) {
+        throw new ForbiddenException(
+          "O'qituvchi faqat o'z guruhiga yoki o'z o'quvchisiga xabar yubora oladi",
+        );
+      }
+    }
+
+    // Aniq tashkilotga yuborish: xabar shu tashkilotga biriktirilgan
+    // foydalanuvchilarga ko'rinadi.
+    let organizationId: number | undefined;
+    if (audience === NotificationAudience.ORGANIZATION) {
+      if (!payload.organizationId) {
+        throw new BadRequestException('Tashkilot tanlanmagan');
+      }
+
+      const organization = await this.prisma.organization.findUnique({
+        where: { id: payload.organizationId },
+        select: { id: true },
+      });
+
+      if (!organization) {
+        throw new NotFoundException('Tashkilot topilmadi');
+      }
+
+      organizationId = organization.id;
+    } else {
+      organizationId = payload.organizationId;
+    }
+
+    // Aniq bir shaxsga yuborish: hisob uch jadvaldan birida bo'ladi.
+    let recipientName: string | null = null;
+    if (audience === NotificationAudience.USER) {
+      if (!payload.recipientRole || !payload.recipientId) {
+        throw new BadRequestException('Qabul qiluvchi tanlanmagan');
+      }
+
+      recipientName = await this.getAccountName(
+        payload.recipientRole,
+        payload.recipientId,
       );
+
+      if (recipientName === null) {
+        throw new NotFoundException('Qabul qiluvchi topilmadi');
+      }
     }
 
     const sender = await this.getSenderName(currentUser);
@@ -132,14 +209,23 @@ export class NotificationsService {
         title: payload.title,
         message: payload.message,
         type: payload.type,
-        audience: payload.audience ?? NotificationAudience.ALL,
+        audience,
         groupId: payload.groupId,
-        organizationId: payload.organizationId,
+        organizationId,
+        recipientRole:
+          audience === NotificationAudience.USER
+            ? payload.recipientRole
+            : undefined,
+        recipientId:
+          audience === NotificationAudience.USER
+            ? payload.recipientId
+            : undefined,
+        recipientName,
         createdByRole: currentUser.role,
         createdById: currentUser.id,
         createdByName: sender,
       },
-      include: { group: { select: { id: true, name: true } } },
+      include: RELATION_INCLUDE,
     });
 
     return {
@@ -235,6 +321,80 @@ export class NotificationsService {
     }
 
     return [];
+  }
+
+  /** O'quvchi shu o'qituvchining guruhlaridan birida bo'lishi shart. */
+  private async ensureStudentIsInTeacherGroup(
+    studentId: number,
+    teacherId: number,
+  ) {
+    if (!studentId) {
+      throw new BadRequestException('Qabul qiluvchi tanlanmagan');
+    }
+
+    const membership = await this.prisma.studentGroup.findFirst({
+      where: {
+        studentId,
+        status: 'ACTIVE',
+        group: { teacherId },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException(
+        "Bu o'quvchi sizning guruhlaringizda emas",
+      );
+    }
+  }
+
+  /** Faqat User jadvalidagi hisoblar tashkilotga biriktiriladi. */
+  private async getOrganizationIdForUser(currentUser: CurrentUser) {
+    if (
+      currentUser.role === Role.STUDENT ||
+      currentUser.role === Role.TEACHER
+    ) {
+      return null;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+      select: { organizationId: true },
+    });
+
+    return user?.organizationId ?? null;
+  }
+
+  /**
+   * Rol va id bo'yicha hisob egasining ismini qaytaradi.
+   * Hisob topilmasa `null` qaytadi.
+   */
+  private async getAccountName(role: Role, id: number) {
+    if (role === Role.TEACHER) {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { id },
+        select: { fullName: true },
+      });
+      return teacher?.fullName ?? null;
+    }
+
+    if (role === Role.STUDENT) {
+      const student = await this.prisma.student.findUnique({
+        where: { id },
+        select: { fullName: true },
+      });
+      return student?.fullName ?? null;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { fullName: true, role: true },
+    });
+
+    // Rol mos kelmasa, xabar noto'g'ri odamga ketib qolmasligi kerak.
+    if (!user || user.role !== role) return null;
+
+    return user.fullName;
   }
 
   private async getSenderName(currentUser: CurrentUser) {

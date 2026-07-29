@@ -4,8 +4,10 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -58,9 +60,10 @@ export class UsersController {
   @Post()
   createUser(
     @Body() payload: CreateUserDto,
+    @Req() req: Request,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.userService.createUser(payload, file);
+    return this.userService.createUser(payload, req['user'], file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -79,8 +82,8 @@ export class UsersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.MANAGEMENT}`,
   })
   @Get(':id')
-  getOneUser(@Param('id') id: string) {
-    return this.userService.getOneUser(+id);
+  getOneUser(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.getOneUser(id);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -110,18 +113,19 @@ export class UsersController {
   )
   @Put(':id')
   updateUser(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateUserDto,
+    @Req() req: Request,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.userService.updateUser(+id, payload, file);
+    return this.userService.updateUser(id, payload, req['user'], file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Delete(':id')
-  deleteUser(@Param('id') id: string) {
-    return this.userService.deleteUser(+id);
+  deleteUser(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    return this.userService.deleteUser(id, req['user']);
   }
 }

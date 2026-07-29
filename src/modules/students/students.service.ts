@@ -274,19 +274,6 @@ export class StudentsService {
     };
   }
 
-  async updateStudent(id: number, payload: UpdateStudentDto) {
-    const Student = await this.prisma.student.findUnique({ where: { id } });
-    if (!Student) {
-      throw new NotFoundException('Student is Not found');
-    }
-    await this.prisma.student.update({ where: { id }, data: payload });
-
-    return {
-      success: true,
-      message: 'Student updated successfully',
-    };
-  }
-
   async deleteStudent(id: number) {
     const Student = await this.prisma.student.findUnique({ where: { id } });
     if (!Student) {

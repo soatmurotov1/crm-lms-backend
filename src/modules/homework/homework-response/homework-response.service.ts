@@ -5,7 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import {
+  CloudinaryService,
+  DOCUMENT_MIME_TYPES,
+} from 'src/common/cloudinary/cloudinary.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateHomeworkResponseDto } from './dto/create.response.dto';
 
@@ -169,7 +172,7 @@ export class HomeworkResponseService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses');
+      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses', DOCUMENT_MIME_TYPES);
     }
 
     await this.prisma.homeworkResponse.create({
@@ -225,7 +228,7 @@ export class HomeworkResponseService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses');
+      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses', DOCUMENT_MIME_TYPES);
     }
 
     await this.prisma.homeworkResponse.update({

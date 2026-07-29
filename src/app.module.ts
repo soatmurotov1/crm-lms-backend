@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { SmsModule } from './common/sms/sms.module';
@@ -30,6 +32,20 @@ import { ExamsModule } from './modules/exams/exams.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    /*
+      Butun API uchun so'rov chegarasi. Buningsiz login'dan boshqa hamma
+      endpoint cheksiz chaqirilardi: ma'lumotlarni ko'chirib olish (scraping)
+      va oddiy DoS uchun ochiq edi.
+
+      Chegara `req.ip` bo'yicha hisoblanadi — u `trust proxy` sozlangani uchun
+      soxtalashtirilgan sarlavhaga emas, haqiqiy manzilga tayanadi.
+    */
+    ThrottlerModule.forRoot([
+      // Panel ochilganda 10-15 so'rov bir vaqtda ketadi, shuning uchun
+      // qisqa oynadagi chegara shundan sezilarli kattaroq.
+      { name: 'short', ttl: 1000, limit: 30 },
+      { name: 'medium', ttl: 60_000, limit: 300 },
+    ]),
     ScheduleModule.forRoot(),
     PrismaModule,
     SmsModule,
@@ -54,6 +70,6 @@ import { ExamsModule } from './modules/exams/exams.module';
     ExamsModule,
   ],
   controllers: [],
-  providers: [UserSeeder],
+  providers: [UserSeeder, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

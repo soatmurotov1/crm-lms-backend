@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { Role, Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import {
+  CloudinaryService,
+  DOCUMENT_MIME_TYPES,
+} from 'src/common/cloudinary/cloudinary.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamResponseDto } from './dto/exam-response.dto';
@@ -389,7 +392,7 @@ export class ExamsService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses');
+      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses', DOCUMENT_MIME_TYPES);
     }
 
     const response = await this.prisma.examResponse.create({
@@ -439,7 +442,7 @@ export class ExamsService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses');
+      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses', DOCUMENT_MIME_TYPES);
     }
 
     const response = await this.prisma.examResponse.update({

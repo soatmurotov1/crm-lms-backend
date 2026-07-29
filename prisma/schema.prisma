@@ -78,12 +78,17 @@ enum SubscriptionStatus {
 }
 
 /// Xabarnoma kimga mo'ljallangani.
+///
+/// ORGANIZATION — aniq bir tashkilotga (o'sha tashkilotga biriktirilgan
+/// foydalanuvchilarga), USER — aniq bir shaxsga (admin / o'qituvchi / o'quvchi).
 enum NotificationAudience {
   ALL
   ADMINS
   TEACHERS
   STUDENTS
   GROUP
+  ORGANIZATION
+  USER
 }
 
 enum NotificationType {
@@ -118,19 +123,21 @@ enum GradeType {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  fullName   String
-  phone      String     @unique
-  photo      String?
-  password   String
-  position   String
-  hire_date  DateTime
-  role       Role
-  address    String?
-  status     UserStatus @default(ACTIVE)
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  fullName       String
+  phone          String     @unique
+  photo          String?
+  password       String
+  position       String
+  hire_date      DateTime
+  role           Role
+  address        String?
+  status         UserStatus @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
 
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   groups          Group[]
   attendances     Attendance[]
   lessons         Lesson[]
@@ -141,6 +148,8 @@ model User {
   exams           Exam[]
   examResults     ExamResult[]
   grades          Grade[]
+
+  @@index([organizationId])
 }
 
 model Teacher {
@@ -216,6 +225,7 @@ model Room {
   groups Group[]
 }
 
+
 model Group {
   id         Int        @id @default(autoincrement())
   teacherId  Int
@@ -244,6 +254,7 @@ model Group {
   @@unique([courseId, name])
 }
 
+
 model StudentGroup {
   id         Int      @id @default(autoincrement())
   userId     Int
@@ -259,6 +270,7 @@ model StudentGroup {
 
   @@unique([groupId, studentId])
 }
+
 
 model Payment {
   id         Int            @id @default(autoincrement())
@@ -280,6 +292,7 @@ model Payment {
 
   @@unique([studentId, groupId, year, month])
 }
+
 
 model Lesson {
   id         Int      @id @default(autoincrement())
@@ -502,13 +515,6 @@ model ExamResult {
   @@unique([examId, studentId])
 }
 
-// ============================================================================
-// Superadmin bo'limlari: tashkilotlar, tariflar va obunalar.
-//
-// Diqqat: bu modellar mavjud ma'lumotlarni ko'p-tashkilotli (multi-tenant)
-// qilib bo'lmaydi — Group / Student / Payment kabi modellarga organizationId
-// qo'shilmagan. Organization hozircha ro'yxat va obuna hisobini yuritadi.
-// ============================================================================
 
 model Organization {
   id           Int      @id @default(autoincrement())
@@ -522,12 +528,13 @@ model Organization {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
+  users          User[]
   subscriptions  Subscription[]
   supportTickets SupportTicket[]
   notifications  Notification[]
 }
 
-/// Tarif — tashkilot to'laydigan obuna rejasi.
+
 model Plan {
   id            Int      @id @default(autoincrement())
   name          String   @unique
@@ -566,9 +573,6 @@ model Subscription {
   @@index([status, endDate])
 }
 
-// ============================================================================
-// Xabarnomalar
-// ============================================================================
 
 model Notification {
   id             Int                  @id @default(autoincrement())
@@ -578,6 +582,11 @@ model Notification {
   audience       NotificationAudience @default(ALL)
   groupId        Int?
   organizationId Int?
+  /// audience = USER bo'lganda — aniq qabul qiluvchi. Ism ko'rsatish uchun
+  /// nusxa qilib saqlanadi, chunki hisoblar uch xil jadvalda joylashgan.
+  recipientRole  Role?
+  recipientId    Int?
+  recipientName  String?
   createdByRole  Role?
   createdById    Int?
   createdByName  String?
@@ -588,10 +597,10 @@ model Notification {
   reads        NotificationRead[]
 
   @@index([audience, created_at])
+  @@index([recipientRole, recipientId])
 }
 
-/// Foydalanuvchilar uch xil jadvalda (User / Teacher / Student) bo'lgani uchun
-/// o'qilganlik belgisi rol + id juftligi bilan saqlanadi.
+
 model NotificationRead {
   id             Int      @id @default(autoincrement())
   notificationId Int
@@ -604,9 +613,6 @@ model NotificationRead {
   @@unique([notificationId, recipientRole, recipientId])
 }
 
-// ============================================================================
-// Qo'llab-quvvatlash (murojaatlar)
-// ============================================================================
 
 model SupportTicket {
   id             Int             @id @default(autoincrement())
@@ -629,6 +635,7 @@ model SupportTicket {
   @@index([status, created_at])
 }
 
+
 model SupportMessage {
   id         Int      @id @default(autoincrement())
   ticketId   Int
@@ -641,9 +648,6 @@ model SupportMessage {
   ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
 
-// ============================================================================
-// Baholar — uy vazifa va imtihondan tashqari qo'yiladigan baholar uchun.
-// ============================================================================
 
 model Grade {
   id         Int       @id @default(autoincrement())

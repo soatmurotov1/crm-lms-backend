@@ -203,7 +203,7 @@ export class PaymentsService {
         group: { status: 'ACTIVE' },
       },
       include: {
-        student: true,
+        student: { select: { id: true, fullName: true, phone: true } },
         group: { include: { course: true } },
       },
     });
@@ -214,7 +214,7 @@ export class PaymentsService {
         month: targetMonth,
       },
       include: {
-        student: true,
+        student: { select: { id: true, fullName: true, phone: true } },
         group: { include: { course: true } },
       },
     });
@@ -342,7 +342,7 @@ export class PaymentsService {
         group: { status: 'ACTIVE' },
       },
       include: {
-        student: true,
+        student: { select: { id: true, fullName: true, phone: true } },
         group: { include: { course: true } },
       },
     });

@@ -9,7 +9,7 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtService } from '@nestjs/jwt';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { Role, VerificationPurpose } from '@prisma/client';
+import { Role, UserStatus, VerificationPurpose } from '@prisma/client';
 import { normalizePhone } from 'src/common/utils/phone.util';
 import { VerificationService } from './verification.service';
 
@@ -31,6 +31,21 @@ export class AuthService {
     fullName: string;
   }) {
     return await this.jwtService.sign(payload);
+  }
+
+  /**
+   * Bloklangan yoki muzlatilgan hisob tizimga kira olmasligi kerak. Parol
+   * to'g'ri bo'lsa ham to'xtatamiz, aks holda "o'chirilgan" xodim eski paroli
+   * bilan ishlashda davom etaveradi.
+   */
+  private ensureAccountIsActive(status: UserStatus) {
+    if (status === UserStatus.ACTIVE) return;
+
+    throw new BadRequestException(
+      status === UserStatus.FREEZE
+        ? 'Hisobingiz vaqtincha muzlatilgan. Administratorga murojaat qiling'
+        : 'Hisobingiz faol emas. Administratorga murojaat qiling',
+    );
   }
 
   private async logLogin(
@@ -143,6 +158,8 @@ export class AuthService {
       throw new BadRequestException('Telefon raqami yoki parol xato');
     }
 
+    this.ensureAccountIsActive(existUser.status);
+
     // Log login activity
     await this.logLogin(existUser.phone, ipAddress, 'user');
 
@@ -184,6 +201,8 @@ export class AuthService {
       throw new BadRequestException('Login or password wrong');
     }
 
+    this.ensureAccountIsActive(existTeacher.status);
+
     // Log login activity
     await this.logLogin(existTeacher.phone, ipAddress, 'teacher');
 
@@ -216,6 +235,8 @@ export class AuthService {
     if (!(await comparePassword(payload.password, existStudent.password))) {
       throw new BadRequestException('Login or password wrong');
     }
+
+    this.ensureAccountIsActive(existStudent.status);
 
     // Log login activity
     await this.logLogin(existStudent.phone, ipAddress, 'student');

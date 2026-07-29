@@ -163,19 +163,49 @@ export class TeachersService {
     };
   }
 
+  /**
+   * O'qituvchini butunlay o'chiradi.
+   *
+   * `Group.teacherId` majburiy maydon, ya'ni bazada `Restrict` — guruhi bor
+   * o'qituvchini o'chirishga urinish foreign key xatosi bilan 500 qaytarardi
+   * va foydalanuvchi sababini bilmasdi. Endi to'sqinlik aniq aytiladi.
+   *
+   * `Rating` esa shunchaki dars bahosi — o'qituvchi bilan birga o'chadi.
+   * Qolgan bog'lanishlar (dars, davomat, baho...) `teacherId` ni ixtiyoriy
+   * qilgani uchun avtomatik `NULL` ga o'tadi va tarix saqlanib qoladi.
+   */
   async deleteTeacher(id: number) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
+      select: { id: true, fullName: true },
     });
+
     if (!teacher) {
       throw new NotFoundException(`Not found teacherId ${id}`);
     }
-    await this.prisma.teacher.delete({
-      where: { id },
+
+    const groups = await this.prisma.group.findMany({
+      where: { teacherId: id },
+      select: { name: true },
     });
+
+    if (groups.length > 0) {
+      const names = groups.map((group) => group.name).join(', ');
+      throw new ConflictException(
+        `O'qituvchini o'chirib bo'lmadi: unga ${groups.length} ta guruh biriktirilgan (${names}). ` +
+          "Avval guruhlarni boshqa o'qituvchiga o'tkazing yoki guruhlarni o'chiring",
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.rating.deleteMany({ where: { teacherId: id } }),
+      this.prisma.teacher.delete({ where: { id } }),
+    ]);
+
     return {
-      message: 'Teacher deleted successfully',
-      id: id,
+      success: true,
+      message: "O'qituvchi o'chirildi",
+      id,
     };
   }
 
