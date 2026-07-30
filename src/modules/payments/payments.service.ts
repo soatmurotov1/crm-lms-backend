@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
@@ -10,9 +11,12 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { StartPaymentDto } from './dto/start-payment.dto';
 import { MarkPaymentDto } from './dto/mark-payment.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
+import { PaymeState } from './payme/payme.types';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private paymeMerchantId = process.env.PAYME_MERCHANT_ID || '';
@@ -408,6 +412,12 @@ export class PaymentsService {
       throw new NotFoundException("To'lov topilmadi");
     }
 
+    // Idempotentlik: tugma ikki marta bosilsa yoki so'rov takrorlansa
+    // `paidAt` qayta yozilmasin - aks holda to'lov sanasi surilib ketadi.
+    if (payment.status === PaymentStatus.PAID) {
+      return payment;
+    }
+
     const updated = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
@@ -445,19 +455,37 @@ export class PaymentsService {
     return updated;
   }
 
+  /**
+   * Boshlangan-u tugallanmagan to'lovlarni tozalaydi.
+   *
+   * MUHIM: Payme tranzaksiyasi ochilgan yoki bajarilgan to'lovga TEGILMAYDI.
+   * Ilgari bu cron hamma `PENDING` to'lovni bir soatdan keyin bekor qilardi -
+   * Payme esa tranzaksiyani 12 soatgacha tasdiqlashi mumkin. Natijada
+   * haqiqatan to'langan pul ham "bekor qilingan" bo'lib qolardi.
+   * Muddati o'tgan Payme tranzaksiyalarini `PaymeService` o'zi yopadi.
+   */
   @Cron('*/5 * * * *')
   async autoCancelExpiredPayments() {
     const threshold = new Date(Date.now() - 60 * 60 * 1000);
 
-    await this.prisma.payment.updateMany({
+    const { count } = await this.prisma.payment.updateMany({
       where: {
         status: PaymentStatus.PENDING,
         created_at: { lt: threshold },
+        paymeTransactions: {
+          none: {
+            state: { in: [PaymeState.CREATED, PaymeState.PERFORMED] },
+          },
+        },
       },
       data: {
         status: PaymentStatus.CANCELED,
       },
     });
+
+    if (count > 0) {
+      this.logger.log(`${count} ta tugallanmagan to'lov bekor qilindi`);
+    }
   }
 
 }

@@ -303,6 +303,31 @@ export class AuthService {
     }
   }
 
+
+  async sendVerificationCode(phone: string, purpose: VerificationPurpose) {
+    const account = await this.findAccountByPhone(phone);
+
+    if (purpose === VerificationPurpose.RESET_PASSWORD) {
+      if (!account) {
+        throw new NotFoundException(
+          "Bu telefon raqami ro'yxatdan o'tmagan. Avval ro'yxatdan o'ting",
+        );
+      }
+
+      return this.verificationService.sendCode(phone, purpose);
+    }
+
+    if (account) {
+      throw new ConflictException(
+        purpose === VerificationPurpose.CHANGE_PHONE
+          ? "Bu telefon raqami boshqa hisobga biriktirilgan"
+          : "Bu telefon raqami allaqachon ro'yxatdan o'tgan. Tizimga kiring yoki parolni tiklang",
+      );
+    }
+
+    return this.verificationService.sendCode(phone, purpose);
+  }
+
   /**
    * SMS kod tasdiqlangandan keyin foydalanuvchi o'zi parol qo'yadi.
    * `purpose` REGISTER (birinchi kirish) yoki RESET_PASSWORD (parolni tiklash).
@@ -332,27 +357,12 @@ export class AuthService {
 
   /** Parolni tiklash uchun kod so'rash. */
   async forgotPassword(phone: string) {
-    const account = await this.findAccountByPhone(phone);
-    if (!account) {
-      throw new NotFoundException('Bunday telefon raqami bilan hisob topilmadi');
-    }
-
-    return this.verificationService.sendCode(
-      phone,
-      VerificationPurpose.RESET_PASSWORD,
-    );
+    return this.sendVerificationCode(phone, VerificationPurpose.RESET_PASSWORD);
   }
 
   /** Telefon raqamini o'zgartirish uchun YANGI raqamga kod yuboriladi. */
   async requestPhoneChange(newPhone: string) {
-    const existing = await this.findAccountByPhone(newPhone);
-    if (existing) {
-      throw new ConflictException(
-        "Bu telefon raqami allaqachon ro'yxatdan o'tgan",
-      );
-    }
-
-    return this.verificationService.sendCode(
+    return this.sendVerificationCode(
       newPhone,
       VerificationPurpose.CHANGE_PHONE,
     );

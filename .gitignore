@@ -46,6 +46,9 @@ lerna-debug.log*
 .temp
 .tmp
 
+# Baza zaxira nusxalari - hech qachon git'ga tushmasin (shaxsiy ma'lumot)
+/backups
+
 # Runtime data
 pids
 *.pid

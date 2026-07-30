@@ -12,6 +12,11 @@ import { UpdateTeachersDto } from './dto/update.teachers.dto';
 import { UserStatus } from '@prisma/client';
 import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
 import { normalizePhone } from 'src/common/utils/phone.util';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  resolvePagination,
+} from 'src/common/utils/pagination.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
 
 @Injectable()
@@ -73,15 +78,20 @@ export class TeachersService {
     }
   }
 
-  async getAllTeachers() {
-    const Teachers = await this.prisma.teacher.findMany({
-      omit: { password: true },
-    });
+  async getAllTeachers(query?: PaginationQueryDto) {
+    const { take, skip } = resolvePagination(query);
 
-    return {
-      success: true,
-      data: Teachers,
-    };
+    const [teachers, total] = await this.prisma.$transaction([
+      this.prisma.teacher.findMany({
+        omit: { password: true },
+        orderBy: { id: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.teacher.count(),
+    ]);
+
+    return buildPaginatedResult(teachers, total, query, 'teachers/all');
   }
 
   async getOneTeacher(id: number) {

@@ -15,6 +15,11 @@ import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
 import { normalizePhone } from 'src/common/utils/phone.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  resolvePagination,
+} from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class StudentsService {
@@ -248,15 +253,20 @@ export class StudentsService {
     }
   }
 
-  async getAllStudents() {
-    const Students = await this.prisma.student.findMany({
-      omit: { password: true },
-    });
+  async getAllStudents(query?: PaginationQueryDto) {
+    const { take, skip } = resolvePagination(query);
 
-    return {
-      success: true,
-      data: Students,
-    };
+    const [students, total] = await this.prisma.$transaction([
+      this.prisma.student.findMany({
+        omit: { password: true },
+        orderBy: { id: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.student.count(),
+    ]);
+
+    return buildPaginatedResult(students, total, query, 'students/all');
   }
 
   async getOneStudent(id: number) {
