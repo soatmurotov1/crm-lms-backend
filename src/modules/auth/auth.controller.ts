@@ -39,9 +39,14 @@ export class AuthController {
   }
 
   @Post('send-code')
-  @ApiOperation({ summary: 'Telefon raqamiga tasdiqlash kodi (SMS) yuborish' })
+  @ApiOperation({
+    summary: 'Telefon raqamiga tasdiqlash kodi (SMS) yuborish',
+    description:
+      "Raqam bazadan tekshiriladi: RESET_PASSWORD uchun hisob mavjud bo'lishi, " +
+      "REGISTER va CHANGE_PHONE uchun esa raqam bo'sh bo'lishi shart.",
+  })
   sendCode(@Body() payload: SendCodeDto) {
-    return this.verificationService.sendCode(
+    return this.authService.sendVerificationCode(
       payload.phone,
       payload.purpose ?? VerificationPurpose.REGISTER,
     );
