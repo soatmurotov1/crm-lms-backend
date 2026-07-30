@@ -7,8 +7,10 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { CourseService } from './course.service';
 import { Role } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -27,8 +29,8 @@ export class CourseController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get('all')
-  getAllCourse() {
-    return this.courseService.getAllCourse();
+  getAllCourse(@Query() query: PaginationQueryDto) {
+    return this.courseService.getAllCourse(query);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })

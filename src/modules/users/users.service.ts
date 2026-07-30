@@ -12,6 +12,11 @@ import { CreateUserDto } from './dto/create.users.dto';
 import { hashPassword } from 'src/common/bcrypt/bcrypt';
 import { normalizePhone } from 'src/common/utils/phone.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  resolvePagination,
+} from 'src/common/utils/pagination.util';
 
 /** JWT'dan keladigan so'rov egasi. */
 type CurrentUser = { id: number; role: Role };
@@ -115,15 +120,20 @@ export class UsersService {
     }
   }
 
-  async getAllUsers() {
-    const users = await this.prisma.user.findMany({
-      omit: { password: true },
-    });
+  async getAllUsers(query?: PaginationQueryDto) {
+    const { take, skip } = resolvePagination(query);
 
-    return {
-      success: true,
-      data: users,
-    };
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        omit: { password: true },
+        orderBy: { id: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.user.count(),
+    ]);
+
+    return buildPaginatedResult(users, total, query, 'users');
   }
 
   async getOneUser(id: number) {

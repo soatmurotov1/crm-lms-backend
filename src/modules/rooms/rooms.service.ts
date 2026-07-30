@@ -6,20 +6,31 @@ import {
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  resolvePagination,
+} from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class RoomsService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllRoom() {
-    const rooms = await this.prisma.room.findMany({
-      where: { status: 'ACTIVE' },
-    });
+  async getAllRoom(query?: PaginationQueryDto) {
+    const { take, skip } = resolvePagination(query);
+    const where = { status: 'ACTIVE' } as const;
 
-    return {
-      success: true,
-      data: rooms,
-    };
+    const [rooms, total] = await this.prisma.$transaction([
+      this.prisma.room.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.room.count({ where }),
+    ]);
+
+    return buildPaginatedResult(rooms, total, query, 'rooms/all');
   }
 
   async createRoom(payload: CreateRoomDto) {

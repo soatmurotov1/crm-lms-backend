@@ -7,11 +7,13 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import {
@@ -70,8 +72,8 @@ export class TeachersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`,
   })
   @Get('all')
-  getAllTeacher() {
-    return this.teachersService.getAllTeachers();
+  getAllTeacher(@Query() query: PaginationQueryDto) {
+    return this.teachersService.getAllTeachers(query);
   }
 
   @ApiOperation({ summary: `${Role.TEACHER}` })

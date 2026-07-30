@@ -7,19 +7,31 @@ import { Status } from '@prisma/client';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import {
+  buildPaginatedResult,
+  resolvePagination,
+} from 'src/common/utils/pagination.util';
+
 @Injectable()
 export class CourseService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllCourse() {
-    const courses = await this.prisma.course.findMany({
-      where: { status: 'ACTIVE' },
-    });
+  async getAllCourse(query?: PaginationQueryDto) {
+    const { take, skip } = resolvePagination(query);
+    const where = { status: 'ACTIVE' } as const;
 
-    return {
-      success: true,
-      data: courses,
-    };
+    const [courses, total] = await this.prisma.$transaction([
+      this.prisma.course.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.course.count({ where }),
+    ]);
+
+    return buildPaginatedResult(courses, total, query, 'course/all');
   }
 
   async createCourse(payload: CreateCourseDto) {

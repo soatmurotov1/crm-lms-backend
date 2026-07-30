@@ -13,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import {
@@ -120,8 +121,8 @@ export class StudentsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get('all')
-  getAllStudent() {
-    return this.studentsService.getAllStudents();
+  getAllStudent(@Query() query: PaginationQueryDto) {
+    return this.studentsService.getAllStudents(query);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })

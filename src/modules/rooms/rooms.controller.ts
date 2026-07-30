@@ -7,8 +7,10 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { RoomsService } from './rooms.service';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -27,8 +29,8 @@ export class RoomsController {
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @Get('all')
-  getAllRoom() {
-    return this.roomService.getAllRoom();
+  getAllRoom(@Query() query: PaginationQueryDto) {
+    return this.roomService.getAllRoom(query);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
