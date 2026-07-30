@@ -290,7 +290,42 @@ model Payment {
   group   Group   @relation(fields: [groupId], references: [id])
   course  Course  @relation(fields: [courseId], references: [id])
 
+  paymeTransactions PaymeTransaction[]
+
   @@unique([studentId, groupId, year, month])
+}
+
+/**
+ * Payme Merchant API tranzaksiyasi.
+ *
+ * Payme bitta to'lov uchun bir necha marta so'rov yuborishi mumkin (tarmoq
+ * uzilishi, qayta urinish). `paycomId` unique bo'lgani uchun takroriy so'rov
+ * yangi yozuv yaratmaydi - shu orqali idempotentlik ta'minlanadi.
+ *
+ * Vaqtlar Payme talabiga ko'ra millisekundda (Unix epoch) saqlanadi.
+ */
+model PaymeTransaction {
+  id          Int     @id @default(autoincrement())
+  paycomId    String  @unique
+  paycomTime  BigInt
+  createTime  BigInt  @default(0)
+  performTime BigInt  @default(0)
+  cancelTime  BigInt  @default(0)
+  /// Payme summani tiyinda yuboradi (1 so'm = 100 tiyin).
+  amount      Decimal
+  /// 1 - yaratilgan, 2 - bajarilgan, -1 - bekor qilingan, -2 - bajarilgandan keyin bekor qilingan
+  state       Int     @default(1)
+  reason      Int?
+
+  paymentId Int
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([paycomTime])
+  @@index([state])
 }
 
 

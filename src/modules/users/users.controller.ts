@@ -7,11 +7,13 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import { UsersService } from './users.service';
 import {
   ApiBearerAuth,
@@ -72,8 +74,8 @@ export class UsersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.MANAGEMENT}`,
   })
   @Get()
-  getAllUser() {
-    return this.userService.getAllUsers();
+  getAllUser(@Query() query: PaginationQueryDto) {
+    return this.userService.getAllUsers(query);
   }
 
   @UseGuards(AuthGuard, RolesGuard)

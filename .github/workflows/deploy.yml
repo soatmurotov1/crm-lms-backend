@@ -49,33 +49,53 @@ jobs:
             echo "==> Building new image..."
             docker compose build
 
-            # 5. Konteynerlarni almashtirish
+            # 5. MIGRATSIYA - app ishga tushishidan OLDIN.
+            #
+            # Ilgari bu qadam `docker compose exec -T app` bilan, ya'ni app
+            # ko'tarilgandan KEYIN bajarilardi. Bu tovuq-tuxum muammosini
+            # yaratardi: yangi kod yangi schema'ni kutadi, topmay yiqiladi,
+            # `restart: unless-stopped` uni qayta ko'taradi va shu payt
+            # `exec` "No such exec instance" xatosi bilan tugaydi.
+            #
+            # `run --rm` bir martalik konteyner ochadi: u app'ning ishlab
+            # turishiga bog'liq emas va migratsiya har doim o'tadi.
+            # `depends_on` sharti tufayli avval baza sog'lom bo'lishi kutiladi.
+            echo "==> Applying database migrations..."
+            docker compose run --rm app npx prisma migrate deploy
+
+            # 6. Endi app'ni yangi (to'g'ri) schema bilan ko'taramiz
             echo "==> Restarting containers..."
             docker compose up -d --remove-orphans
 
-            # 6. App konteyneri ko'tarilishini kutish
+            # 7. App haqiqatan ko'tarilganini tekshiramiz.
+            # Ilgari bu tsikl natijani tekshirmasdan tugardi - konteyner
+            # yiqilgan bo'lsa ham deploy "muvaffaqiyatli" deb yakunlanardi.
             echo "==> Waiting for app container..."
+            APP_UP=0
             for i in $(seq 1 30); do
               if [ "$(docker inspect -f '{{.State.Running}}' crm-lms-backend-app 2>/dev/null)" = "true" ]; then
-                break
+                # Bir necha soniya kutamiz: crash-loop'dagi konteyner ham
+                # qisqa vaqtga "Running" bo'lib turadi.
+                sleep 5
+                if [ "$(docker inspect -f '{{.State.Running}}' crm-lms-backend-app 2>/dev/null)" = "true" ]; then
+                  APP_UP=1
+                  break
+                fi
               fi
               sleep 2
             done
 
-            # 7. DB migratsiyalarini qo'llash
-            echo "==> Applying database migrations..."
-            docker compose exec -T app npx prisma migrate deploy
+            if [ "$APP_UP" != "1" ]; then
+              echo "ERROR: app konteyneri ko'tarilmadi. Oxirgi loglar:"
+              docker compose logs --tail=80 app
+              exit 1
+            fi
 
-            # 8. Migratsiyadan keyin app'ni qayta ishga tushirish
-            # (birinchi deployda superadmin seed jadvallar yaratilgunicha ishlamaydi)
-            echo "==> Restarting app after migrations..."
-            docker compose restart app
-
-            # 9. Eski image qatlamlarini tozalash (build'dan KEYIN)
+            # 8. Eski image qatlamlarini tozalash (build'dan KEYIN)
             echo "==> Cleaning up old docker images..."
             docker image prune -f
 
-            # 10. Natijani ko'rsatish
+            # 9. Natijani ko'rsatish
             docker compose ps
             docker compose logs --tail=40 app
 
