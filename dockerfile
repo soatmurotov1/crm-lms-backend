@@ -50,5 +50,16 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://127.0.0.1:3000/api',(r)=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
 
+# Migratsiya app'dan OLDIN, har safar konteyner ko'tarilganda.
+#
+# Ilgari bu faqat deploy workflow'ida bajarilardi. Serverda qo'lda
+# `docker compose up -d` qilinganda esa app migratsiyasiz bazaga ulanardi:
+# jadval/ustun yetishmagani uchun Prisma "The column `(not available)` does
+# not exist in the current database" deb yiqilardi va sabab ko'rinmasdi.
+#
+# `migrate deploy` idempotent - qo'llanilgan migratsiyani qayta ishlatmaydi,
+# shuning uchun workflow'dagi qadam bilan takrorlanishi zarar qilmaydi.
+# Migratsiya yiqilsa `&&` app'ni ishga tushirmaydi - xato log'da aniq turadi.
+#
 # tsconfig.build.json prisma.config.ts'ni exclude qiladi -> rootDir=src -> chiqish: dist/main.js
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node dist/main.js"]
