@@ -8,6 +8,8 @@ import {
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { HomeworkStatusDto } from './dto/homework.status.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
+import { orgFilter } from 'src/common/utils/org-scope.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class HomeworkService {
@@ -16,7 +18,7 @@ export class HomeworkService {
   async getHomeworkById(
     homeworkId: number,
     query: HomeworkStatusDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
       where: {
@@ -32,9 +34,10 @@ export class HomeworkService {
       currentUser.role === Role.TEACHER &&
       existHomework.teacherId !== currentUser.id
     ) {
-      const homeworkGroup = await this.prisma.group.findUnique({
+      const homeworkGroup = await this.prisma.group.findFirst({
         where: {
           id: existHomework.groupId,
+          ...orgFilter(currentUser),
         },
         select: {
           teacherId: true,
@@ -193,12 +196,13 @@ export class HomeworkService {
 
   async getAllHomeworkByGroup(
     groupId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
         status: 'ACTIVE',
+        ...orgFilter(currentUser),
       },
     });
 
@@ -265,13 +269,14 @@ export class HomeworkService {
 
   async createHomework(
     payload: any,
-    currentUser: { id: number; role: string },
+    currentUser: RequestUser,
     filename?: string,
   ) {
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: payload.groupId,
         status: 'ACTIVE',
+        ...orgFilter(currentUser),
       },
     });
 
@@ -321,7 +326,7 @@ export class HomeworkService {
   async updateHomework(
     homeworkId: number,
     payload: UpdateHomeworkDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
     filename?: string,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
@@ -344,9 +349,10 @@ export class HomeworkService {
     const targetGroupId = payload.groupId ?? existHomework.groupId;
     const targetLessonId = payload.lessonId ?? existHomework.lessonId;
 
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: targetGroupId,
+        ...orgFilter(currentUser),
         status: 'ACTIVE',
       },
     });
@@ -398,7 +404,7 @@ export class HomeworkService {
   async updateHomeworkByTeacher(
     homeworkId: number,
     payload: UpdateHomeworkDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
     filename?: string,
   ) {
     if (currentUser.role !== Role.TEACHER) {
@@ -410,7 +416,7 @@ export class HomeworkService {
 
   async deleteHomework(
     homeworkId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
       where: { id: homeworkId },

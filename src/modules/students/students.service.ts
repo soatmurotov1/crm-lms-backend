@@ -15,6 +15,11 @@ import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
 import { normalizePhone } from 'src/common/utils/phone.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import {
+  orgFilter,
+  resolveOwnerOrganizationId,
+} from 'src/common/utils/org-scope.util';
 import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import {
   buildPaginatedResult,
@@ -189,7 +194,12 @@ export class StudentsService {
     };
   }
 
-  async createStudent(payload: CreateStudentDto, file?: Express.Multer.File) {
+  async createStudent(
+    user: RequestUser,
+    payload: CreateStudentDto,
+    file?: Express.Multer.File,
+  ) {
+    const organizationId = resolveOwnerOrganizationId(user);
     let photoUrl: string | null = null;
     const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
@@ -208,6 +218,7 @@ export class StudentsService {
         password: await hashPassword(plainPassword),
         photo: photoUrl,
         birth_date: new Date(payload.birth_date),
+        organizationId,
       },
     });
 
@@ -253,25 +264,28 @@ export class StudentsService {
     }
   }
 
-  async getAllStudents(query?: PaginationQueryDto) {
+  async getAllStudents(user: RequestUser, query?: PaginationQueryDto) {
     const { take, skip } = resolvePagination(query);
+    // Har bir tashkilot faqat o'z o'quvchilarini ko'radi.
+    const where = orgFilter(user);
 
     const [students, total] = await this.prisma.$transaction([
       this.prisma.student.findMany({
+        where,
         omit: { password: true },
         orderBy: { id: 'desc' },
         take,
         skip,
       }),
-      this.prisma.student.count(),
+      this.prisma.student.count({ where }),
     ]);
 
     return buildPaginatedResult(students, total, query, 'students/all');
   }
 
-  async getOneStudent(id: number) {
-    const Student = await this.prisma.student.findUnique({
-      where: { id },
+  async getOneStudent(user: RequestUser, id: number) {
+    const Student = await this.prisma.student.findFirst({
+      where: { id, ...orgFilter(user) },
       omit: { password: true },
     });
     if (!Student) {
@@ -284,8 +298,10 @@ export class StudentsService {
     };
   }
 
-  async deleteStudent(id: number) {
-    const Student = await this.prisma.student.findUnique({ where: { id } });
+  async deleteStudent(user: RequestUser, id: number) {
+    const Student = await this.prisma.student.findFirst({
+      where: { id, ...orgFilter(user) },
+    });
     if (!Student) {
       throw new NotFoundException('Student is Not found');
     }
@@ -293,12 +309,13 @@ export class StudentsService {
   }
 
   async updateStudentById(
+    user: RequestUser,
     id: number,
     payload: UpdateStudentDto,
     file?: Express.Multer.File,
   ) {
-    const Student = await this.prisma.student.findUnique({
-      where: { id },
+    const Student = await this.prisma.student.findFirst({
+      where: { id, ...orgFilter(user) },
     });
     if (!Student) {
       throw new NotFoundException('Student is Not found');

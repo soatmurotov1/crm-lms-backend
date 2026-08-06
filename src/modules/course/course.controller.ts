@@ -19,6 +19,10 @@ import { UpdateCourseDto } from './dto/update-course.dto';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('course')
 @ApiBearerAuth()
@@ -29,24 +33,33 @@ export class CourseController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get('all')
-  getAllCourse(@Query() query: PaginationQueryDto) {
-    return this.courseService.getAllCourse(query);
+  getAllCourse(
+    @CurrentUser() user: RequestUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.courseService.getAllCourse(user, query);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Post()
-  createCourse(@Body() payload: CreateCourseDto) {
-    return this.courseService.createCourse(payload);
+  createCourse(
+    @CurrentUser() user: RequestUser,
+    @Body() payload: CreateCourseDto,
+  ) {
+    return this.courseService.createCourse(user, payload);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get(':id')
-  getOneCourse(@Param('id', ParseIntPipe) id: number) {
-    return this.courseService.getOneCourse(id);
+  getOneCourse(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.courseService.getOneCourse(user, id);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
@@ -54,17 +67,21 @@ export class CourseController {
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Put(':id')
   updateCourseById(
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateCourseDto,
   ) {
-    return this.courseService.updateCourseById(id, payload);
+    return this.courseService.updateCourseById(user, id, payload);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Delete(':id')
-  deleteCourseById(@Param('id', ParseIntPipe) id: number) {
-    return this.courseService.deleteCourseById(id);
+  deleteCourseById(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.courseService.deleteCourseById(user, id);
   }
 }

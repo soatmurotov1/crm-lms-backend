@@ -27,6 +27,10 @@ import { UpdateUserDto } from './dto/update.user.dto';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  RequestUser,
+} from 'src/common/guard/current-user.decorator';
 import { Role } from '@prisma/client';
 import { CreateUserDto } from './dto/create.users.dto';
 
@@ -74,8 +78,11 @@ export class UsersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.MANAGEMENT}`,
   })
   @Get()
-  getAllUser(@Query() query: PaginationQueryDto) {
-    return this.userService.getAllUsers(query);
+  getAllUser(
+    @CurrentUser() user: RequestUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.userService.getAllUsers(user, query);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -84,8 +91,11 @@ export class UsersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.MANAGEMENT}`,
   })
   @Get(':id')
-  getOneUser(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.getOneUser(id);
+  getOneUser(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.userService.getOneUser(user, id);
   }
 
   @UseGuards(AuthGuard, RolesGuard)

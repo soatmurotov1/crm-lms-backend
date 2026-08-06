@@ -17,9 +17,14 @@ import {
   buildPaginatedResult,
   resolvePagination,
 } from 'src/common/utils/pagination.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import {
+  orgFilter,
+  resolveOwnerOrganizationId,
+} from 'src/common/utils/org-scope.util';
 
 /** JWT'dan keladigan so'rov egasi. */
-type CurrentUser = { id: number; role: Role };
+type CurrentUser = RequestUser;
 
 @Injectable()
 export class UsersService {
@@ -39,6 +44,9 @@ export class UsersService {
       throw new ForbiddenException('SUPERADMIN hisobini yarata olmaysiz');
     }
 
+    // Yangi xodim so'rov egasining tashkilotiga biriktiriladi.
+    const organizationId = resolveOwnerOrganizationId(currentUser);
+
     let photoUrl: string | null = null;
     const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
@@ -56,6 +64,7 @@ export class UsersService {
         password: await hashPassword(plainPassword),
         hire_date: new Date(payload.hire_date),
         photo: photoUrl,
+        organizationId,
       },
     });
 
@@ -120,25 +129,28 @@ export class UsersService {
     }
   }
 
-  async getAllUsers(query?: PaginationQueryDto) {
+  async getAllUsers(currentUser: CurrentUser, query?: PaginationQueryDto) {
     const { take, skip } = resolvePagination(query);
+    // Har bir tashkilot faqat o'z xodimlarini ko'radi.
+    const where = orgFilter(currentUser);
 
     const [users, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
+        where,
         omit: { password: true },
         orderBy: { id: 'desc' },
         take,
         skip,
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
 
     return buildPaginatedResult(users, total, query, 'users');
   }
 
-  async getOneUser(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  async getOneUser(currentUser: CurrentUser, id: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...orgFilter(currentUser) },
       omit: { password: true },
     });
     if (!user) {
@@ -157,7 +169,9 @@ export class UsersService {
     currentUser: CurrentUser,
     file?: Express.Multer.File,
   ) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...orgFilter(currentUser) },
+    });
     if (!user) {
       throw new NotFoundException('User is Not found');
     }
@@ -194,7 +208,9 @@ export class UsersService {
   }
 
   async deleteUser(id: number, currentUser: CurrentUser) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...orgFilter(currentUser) },
+    });
     if (!user) {
       throw new NotFoundException('User is Not found');
     }

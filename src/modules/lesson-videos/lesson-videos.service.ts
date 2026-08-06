@@ -8,6 +8,8 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateLessonVideosDto } from './dto/create.lesson-videos.dto';
 import { Role, Status } from '@prisma/client';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import { orgFilter } from 'src/common/utils/org-scope.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class LessonVideosService {
@@ -18,11 +20,12 @@ export class LessonVideosService {
 
   async getAllLessonVideosByGroup(
     groupId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
+        ...orgFilter(currentUser),
         status: 'ACTIVE',
       },
     });
@@ -77,7 +80,7 @@ export class LessonVideosService {
 
   async createLessonVideo(
     payload: CreateLessonVideosDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
     filename?: string,
   ) {
     if (!filename) {
@@ -99,7 +102,7 @@ export class LessonVideosService {
     };
   }
 
-  async deleteLessonVideo(id: number, currentUser: { id: number; role: Role }) {
+  async deleteLessonVideo(id: number, currentUser: RequestUser) {
     const existing = await this.prisma.lessonVideo.findUnique({
       where: { id },
       select: {

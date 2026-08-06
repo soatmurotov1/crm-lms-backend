@@ -7,6 +7,8 @@ import {
 import { Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateStudentGroupDto } from './dto/create.student-group.dto';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { orgFilter } from 'src/common/utils/org-scope.util';
 
 @Injectable()
 export class StudentGroupService {
@@ -14,15 +16,19 @@ export class StudentGroupService {
 
   async createStudentGroup(
     payload: CreateStudentGroupDto,
-    currentUser: { id: number },
+    currentUser: RequestUser,
   ) {
     const groupStudentsCount = await this.prisma.studentGroup.count({
       where: {
         groupId: payload.groupId,
       },
     });
-    const existGroup = await this.prisma.group.findUnique({
-      where: { id: payload.groupId, status: Status.ACTIVE },
+    const existGroup = await this.prisma.group.findFirst({
+      where: {
+        id: payload.groupId,
+        status: Status.ACTIVE,
+        ...orgFilter(currentUser),
+      },
       select: {
         room: {
           select: {
@@ -61,7 +67,7 @@ export class StudentGroupService {
 
   async deleteStudentGroup(
     payload: { id?: number; groupId: number; studentId: number },
-    currentUser: { id: number },
+    currentUser: RequestUser,
   ) {
     const existStudentGroup = await this.prisma.studentGroup.findFirst({
       where: {

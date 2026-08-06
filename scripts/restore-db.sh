@@ -75,8 +75,41 @@ if [ "$MODE" = "--dry-run" ]; then
     TABLES="$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$TEST_DB" -tAc \
         "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")"
 
+    # Jadval soni yetarli dalil emas: `--schema-only` bilan olingan nusxada ham
+    # hamma jadval bor, lekin ichida bitta ham qator yo'q. Shuning uchun
+    # qatorlarni ham sanaymiz - aks holda bo'sh nusxa "yaroqli" deb chiqadi.
+    ROW_QUERY="
+        SELECT coalesce(sum(cnt), 0) FROM (
+            SELECT (xpath('/row/c/text()', query_to_xml(
+                format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+                false, true, '')))[1]::text::bigint AS cnt
+            FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ) t"
+
+    ROWS="$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$TEST_DB" -tAc "$ROW_QUERY")"
+
     echo
-    echo "✅ Nusxa yaroqli. Tiklangan jadvallar soni: $TABLES"
+    echo "Eng katta jadvallar:"
+    docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$TEST_DB" -tAc "
+        SELECT '  ' || table_name || ': ' || (xpath('/row/c/text()', query_to_xml(
+            format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+            false, true, '')))[1]::text
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ORDER BY (xpath('/row/c/text()', query_to_xml(
+            format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+            false, true, '')))[1]::text::bigint DESC
+        LIMIT 5"
+
+    echo
+    if [ "$ROWS" -eq 0 ]; then
+        echo "❌ Nusxada jadvallar bor ($TABLES ta), lekin BITTA HAM QATOR YO'Q."
+        echo "   Bu ma'lumotsiz (schema-only) nusxa - undan tiklab bo'lmaydi."
+        exit 1
+    fi
+
+    echo "✅ Nusxa yaroqli. Jadvallar: $TABLES, jami qatorlar: $ROWS"
     exit 0
 fi
 

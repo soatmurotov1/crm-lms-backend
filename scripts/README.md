@@ -64,8 +64,22 @@ u vaqtinchalik bazaga tiklab ko'radi va asosiy bazaga **tegmaydi**:
 Natija:
 
 ```
-✅ Nusxa yaroqli. Tiklangan jadvallar soni: 27
+Eng katta jadvallar:
+  Student: 251
+  Organization: 1
+  Course: 1
+
+✅ Nusxa yaroqli. Jadvallar: 30, jami qatorlar: 253
 ```
+
+Jadval soni yolg'iz o'zi yetarli emas: `--schema-only` nusxada ham hamma jadval
+bor, lekin ichi bo'sh. Shuning uchun **qatorlar ham sanaladi** va bitta ham
+qator bo'lmasa skript `❌` bilan `1` kodini qaytaradi. `backup-db.sh` ham
+xuddi shu tekshiruvni har safar bajaradi: bazada qator bor-u arxivda yo'q
+bo'lsa, arxiv o'chiriladi va zaxira muvaffaqiyatsiz deb belgilanadi.
+
+Ikkala skript ham xatoda **0 dan farqli kod** qaytaradi — cron yoki monitoring
+shu kod bo'yicha ogohlantirsin.
 
 ## Haqiqiy tiklash
 
@@ -83,8 +97,29 @@ Skript ketma-ket:
 
 Noto'g'ri fayl tanlagan bo'lsangiz, 3-qadamdagi fayldan qaytib olasiz.
 
+## Sinovdan o'tgani
+
+2026-08-05 da skriptlar haqiqiy Docker muhitida boshdan-oxir sinaldi:
+baza to'ldirildi → zaxira olindi → **postgres volume butunlay o'chirildi**
+(disk yo'qolishi taqlidi) → bo'sh konteynerdan faqat arxiv yordamida
+tiklandi. Natija: 30 jadval, 253 qator, 16 enum turi joyida; `id` ketma-ketligi
+ham to'g'ri tiklandi (tiklashdan keyingi birinchi yozuv `251` oldi, ya'ni
+birlamchi kalit to'qnashuvi yo'q).
+
 ## Nima qilinmagan
 
-Bu skriptlar **kunlik** nusxa oladi — ya'ni eng yomon holatda 24 soatlik
-ma'lumot yo'qolishi mumkin. Bu yetarli bo'lmasa, keyingi qadam — WAL
-arxivlash (`pgBackRest` yoki `wal-g`) bilan istalgan daqiqaga qaytish.
+**1. Nusxalar hamon o'sha serverda.** `BACKUP_S3_BUCKET` sozlanmagan ekan —
+ya'ni droplet yo'qolsa, zaxira ham u bilan birga yo'qoladi. Kod tayyor,
+faqat kalitlar kerak (yuqoridagi "Tashqi saqlashni yoqish" bo'limi). Bu
+zaxira tizimidagi eng katta ochiq risk.
+
+**2. Bo'sh bazani migratsiyadan qurib bo'lmaydi.** `20260729000000_...`
+migratsiyasi `Exam` jadvaliga tashqi kalit qo'yadi, `Exam` esa undan keyingi
+`20260729010000_exam_module` da yaratiladi. Shu sababli toza bazada
+`prisma migrate deploy` shu joyda to'xtaydi (sinab ko'rilgan). Zaxiradan
+tiklashga bu ta'sir qilmaydi — dump'da to'liq sxema bor — lekin "noldan yangi
+server ko'tarish" yo'li hozir ishlamaydi.
+
+**3. Kunlik oraliq.** Eng yomon holatda 24 soatlik ma'lumot yo'qoladi. Bu
+yetarli bo'lmasa, keyingi qadam — WAL arxivlash (`pgBackRest` yoki `wal-g`)
+bilan istalgan daqiqaga qaytish.

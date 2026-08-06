@@ -5,6 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { orgFilter } from 'src/common/utils/org-scope.util';
 import { Cron } from '@nestjs/schedule';
 import { PaymentMethod, PaymentStatus, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -71,14 +73,16 @@ export class PaymentsService {
     return Math.max(Math.ceil(diff / 60000), 0);
   }
 
-  async getMonthlySummary(year?: number, month?: number) {
+  async getMonthlySummary(user: RequestUser, year?: number, month?: number) {
     const { targetYear, targetMonth } = this.normalizeMonthYear(year, month);
+    // To'lovlar guruh orqali tashkilotga tegishli.
+    const groupOrg = orgFilter(user);
 
     const studentGroups = await this.prisma.studentGroup.findMany({
       where: {
         status: 'ACTIVE',
         student: { status: 'ACTIVE' },
-        group: { status: 'ACTIVE' },
+        group: { status: 'ACTIVE', ...groupOrg },
       },
       include: {
         group: { include: { course: true } },
@@ -89,6 +93,7 @@ export class PaymentsService {
       where: {
         year: targetYear,
         month: targetMonth,
+        group: groupOrg,
       },
     });
 
@@ -136,26 +141,28 @@ export class PaymentsService {
    * getMonthlySummary'ni 12 marta chaqirmaslik uchun ma'lumot bir marta olinib,
    * oylar bo'yicha xotirada guruhlanadi.
    */
-  async getYearlySummary(year?: number) {
+  async getYearlySummary(user: RequestUser, year?: number) {
     const targetYear = Number(year || new Date().getFullYear());
 
     if (!Number.isFinite(targetYear)) {
       throw new BadRequestException("Noto'g'ri sana");
     }
 
+    const groupOrg = orgFilter(user);
+
     const [studentGroups, payments] = await Promise.all([
       this.prisma.studentGroup.findMany({
         where: {
           status: 'ACTIVE',
           student: { status: 'ACTIVE' },
-          group: { status: 'ACTIVE' },
+          group: { status: 'ACTIVE', ...groupOrg },
         },
         include: {
           group: { include: { course: true } },
         },
       }),
       this.prisma.payment.findMany({
-        where: { year: targetYear },
+        where: { year: targetYear, group: groupOrg },
       }),
     ]);
 
@@ -194,17 +201,19 @@ export class PaymentsService {
   }
 
   async getAdminMonthlyPayments(
+    user: RequestUser,
     year?: number,
     month?: number,
     status?: string,
   ) {
     const { targetYear, targetMonth } = this.normalizeMonthYear(year, month);
+    const groupOrg = orgFilter(user);
 
     const studentGroups = await this.prisma.studentGroup.findMany({
       where: {
         status: 'ACTIVE',
         student: { status: 'ACTIVE' },
-        group: { status: 'ACTIVE' },
+        group: { status: 'ACTIVE', ...groupOrg },
       },
       include: {
         student: { select: { id: true, fullName: true, phone: true } },
@@ -216,6 +225,7 @@ export class PaymentsService {
       where: {
         year: targetYear,
         month: targetMonth,
+        group: groupOrg,
       },
       include: {
         student: { select: { id: true, fullName: true, phone: true } },
@@ -274,7 +284,7 @@ export class PaymentsService {
 
   async getStudentMonthlyPayments(
     studentId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
     year?: number,
     month?: number,
   ) {
@@ -284,8 +294,9 @@ export class PaymentsService {
 
     const { targetYear, targetMonth } = this.normalizeMonthYear(year, month);
 
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+    // O'quvchi ham so'rov egasining tashkilotida bo'lishi shart.
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, ...orgFilter(currentUser) },
     });
     if (!student) {
       throw new NotFoundException('Talaba topilmadi');

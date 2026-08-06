@@ -83,6 +83,32 @@ if [ "$ARCHIVE_SIZE" -lt "$MIN_SIZE" ]; then
     fail "Arxiv juda kichik ($ARCHIVE_SIZE bayt) - bo'sh dump bo'lishi mumkin"
 fi
 
+# Hajm ham yetarli dalil emas: faqat sxemadan iborat nusxa bir necha kilobayt
+# bo'ladi va yuqoridagi tekshiruvdan bemalol o'tadi. Shuning uchun arxiv ichida
+# haqiqiy qatorlar borligini sanaymiz - `COPY ... FROM stdin` bloklari orasidagi
+# satrlar. Bazada ma'lumot bor, nusxada yo'q bo'lsa - bu jimgina falokat.
+LIVE_ROWS="$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -tAc "
+    SELECT coalesce(sum(cnt), 0) FROM (
+        SELECT (xpath('/row/c/text()', query_to_xml(
+            format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+            false, true, '')))[1]::text::bigint AS cnt
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    ) t" | tr -d '[:space:]')"
+
+DUMP_ROWS="$(gunzip -c "$ARCHIVE" | awk '
+    /^COPY .* FROM stdin;$/ { inblock = 1; next }
+    inblock && /^\\\.$/     { inblock = 0; next }
+    inblock                 { n++ }
+    END                     { print n + 0 }')"
+
+if [ "${LIVE_ROWS:-0}" -gt 0 ] && [ "$DUMP_ROWS" -eq 0 ]; then
+    rm -f "$ARCHIVE"
+    fail "Bazada $LIVE_ROWS qator bor, arxivda esa 0 - nusxa ma'lumotsiz chiqdi"
+fi
+
+log "Qatorlar: bazada $LIVE_ROWS, arxivda $DUMP_ROWS"
+
 log "Tayyor: $(basename "$ARCHIVE") ($(numfmt --to=iec "$ARCHIVE_SIZE" 2>/dev/null || echo "$ARCHIVE_SIZE bayt"))"
 
 # ---------------------------------------------------------------------------

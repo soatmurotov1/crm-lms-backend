@@ -9,6 +9,11 @@ import { Role, Status, UserStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import {
+  orgFilter,
+  resolveOwnerOrganizationId,
+} from 'src/common/utils/org-scope.util';
 
 @Injectable()
 export class GroupsService {
@@ -34,7 +39,20 @@ export class GroupsService {
     return [Status.ACTIVE];
   }
 
-  async getAllStudentGroupById(groupId: number) {
+  async getAllStudentGroupById(groupId: number, currentUser: RequestUser) {
+    /*
+      Guruh so'rov egasining tashkilotidami — bu tekshiruvsiz boshqa
+      tashkilotning `groupId` si bilan uning o'quvchilari ro'yxati ochilardi.
+    */
+    const existGroup = await this.prisma.group.findFirst({
+      where: { id: groupId, ...orgFilter(currentUser) },
+      select: { id: true },
+    });
+
+    if (!existGroup) {
+      throw new NotFoundException('Group not found');
+    }
+
     const groups = await this.prisma.studentGroup.findMany({
       where: {
         groupId,
@@ -64,14 +82,12 @@ export class GroupsService {
     };
   }
 
-  async getGroupLessons(
-    groupId: number,
-    currentUser: { id: number; role: Role },
-  ) {
-    const existGroup = await this.prisma.group.findUnique({
+  async getGroupLessons(groupId: number, currentUser: RequestUser) {
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
         status: 'ACTIVE',
+        ...orgFilter(currentUser),
       },
     });
     if (!existGroup) {
@@ -111,14 +127,15 @@ export class GroupsService {
     };
   }
 
-  async getAllGroup(
-    currentUser: { id: number; role: Role },
-    statusFilter?: string,
-  ) {
+  async getAllGroup(currentUser: RequestUser, statusFilter?: string) {
+    // Guruh qaysi tashkilotniki — barcha rollar uchun shu filtr qo'llanadi.
+    const orgWhere = orgFilter(currentUser);
+
     if (currentUser?.role === Role.STUDENT) {
       const studentGroups = await this.prisma.studentGroup.findMany({
         where: {
           studentId: currentUser.id,
+          group: orgWhere,
         },
         include: {
           group: {
@@ -157,8 +174,8 @@ export class GroupsService {
 
     const whereClause =
       currentUser?.role === Role.TEACHER
-        ? { status: { in: statuses }, teacherId: currentUser.id }
-        : { status: { in: statuses } };
+        ? { status: { in: statuses }, teacherId: currentUser.id, ...orgWhere }
+        : { status: { in: statuses }, ...orgWhere };
 
     const groups = await this.prisma.group.findMany({
       where: whereClause,
@@ -197,11 +214,17 @@ export class GroupsService {
     };
   }
 
-  async createGroup(payload: CreateGroupDto, currentUser: { id: number }) {
+  async createGroup(payload: CreateGroupDto, currentUser: RequestUser) {
+    const organizationId = resolveOwnerOrganizationId(currentUser);
+    // O'qituvchi, kurs va xona ham shu tashkilotniki bo'lishi shart —
+    // aks holda boshqa tashkilotning resursi guruhga biriktirilib qolardi.
+    const orgWhere = orgFilter(currentUser);
+
     const existTeacher = await this.prisma.teacher.findFirst({
       where: {
         id: payload.teacherId,
         status: Status.ACTIVE,
+        ...orgWhere,
       },
     });
 
@@ -213,6 +236,7 @@ export class GroupsService {
       where: {
         id: payload.courseId,
         status: Status.ACTIVE,
+        ...orgWhere,
       },
       select: {
         durationLesson: true,
@@ -227,6 +251,7 @@ export class GroupsService {
       where: {
         id: payload.roomId,
         status: Status.ACTIVE,
+        ...orgWhere,
       },
     });
 
@@ -234,7 +259,7 @@ export class GroupsService {
       throw new NotFoundException('Room not found with this id');
     }
 
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         name: payload.name,
         courseId: payload.courseId,
@@ -295,6 +320,7 @@ export class GroupsService {
         ...payload,
         userId: currentUser.id,
         startDate: new Date(payload.startDate),
+        organizationId,
       },
     });
 
@@ -307,11 +333,12 @@ export class GroupsService {
   async updateGroupById(
     groupId: number,
     payload: UpdateGroupDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findUnique({
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
+        ...orgFilter(currentUser),
       },
     });
     if (!existGroup) {
@@ -360,11 +387,12 @@ export class GroupsService {
     };
   }
 
-  async deleteGroupById(groupId: number, currentUser: { id: number }) {
-    const existGroup = await this.prisma.group.findUnique({
+  async deleteGroupById(groupId: number, currentUser: RequestUser) {
+    const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
         status: Status.ACTIVE,
+        ...orgFilter(currentUser),
       },
     });
     if (!existGroup) {

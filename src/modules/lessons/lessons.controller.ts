@@ -76,8 +76,14 @@ export class LessonsController {
     @Param('groupId', ParseIntPipe) groupId: number,
     @Param('lessonId', ParseIntPipe) lessonId: number,
     @Body() payload: UpdateLessonDto,
+    @Req() req: Request,
   ) {
-    return this.lessonServise.updateLessonById(groupId, lessonId, payload);
+    return this.lessonServise.updateLessonById(
+      groupId,
+      lessonId,
+      payload,
+      req['user'],
+    );
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })

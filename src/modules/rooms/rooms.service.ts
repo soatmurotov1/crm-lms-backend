@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -11,14 +12,20 @@ import {
   buildPaginatedResult,
   resolvePagination,
 } from 'src/common/utils/pagination.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import {
+  orgFilter,
+  resolveOwnerOrganizationId,
+} from 'src/common/utils/org-scope.util';
 
 @Injectable()
 export class RoomsService {
   constructor(private prisma: PrismaService) {}
 
-  async getAllRoom(query?: PaginationQueryDto) {
+  async getAllRoom(user: RequestUser, query?: PaginationQueryDto) {
     const { take, skip } = resolvePagination(query);
-    const where = { status: 'ACTIVE' } as const;
+    // Har bir tashkilot faqat o'z xonalarini ko'radi.
+    const where = { status: Status.ACTIVE, ...orgFilter(user) };
 
     const [rooms, total] = await this.prisma.$transaction([
       this.prisma.room.findMany({
@@ -33,16 +40,20 @@ export class RoomsService {
     return buildPaginatedResult(rooms, total, query, 'rooms/all');
   }
 
-  async createRoom(payload: CreateRoomDto) {
-    const existRoom = await this.prisma.room.findUnique({
-      where: { name: payload.name },
+  async createRoom(user: RequestUser, payload: CreateRoomDto) {
+    const organizationId = resolveOwnerOrganizationId(user);
+
+    // Xona nomi faqat shu tashkilot ichida takrorlanmasligi kerak — boshqa
+    // tashkilotda ham "101" xonasi bo'lishi mumkin.
+    const existRoom = await this.prisma.room.findFirst({
+      where: { name: payload.name, organizationId },
     });
     if (existRoom) {
       throw new ConflictException('Room name alread exist');
     }
 
     await this.prisma.room.create({
-      data: payload,
+      data: { ...payload, organizationId },
     });
 
     return {
@@ -51,9 +62,9 @@ export class RoomsService {
     };
   }
 
-  async getRoomById(id: number) {
+  async getRoomById(user: RequestUser, id: number) {
     const room = await this.prisma.room.findFirst({
-      where: { id, status: 'ACTIVE' },
+      where: { id, status: Status.ACTIVE, ...orgFilter(user) },
     });
 
     if (!room) {
@@ -66,12 +77,8 @@ export class RoomsService {
     };
   }
 
-  async updateRoom(id: number, payload: UpdateRoomDto) {
-    const room = await this.prisma.room.findUnique({ where: { id } });
-
-    if (!room) {
-      throw new NotFoundException('Room is Not found');
-    }
+  async updateRoom(user: RequestUser, id: number, payload: UpdateRoomDto) {
+    await this.ensureOwned(user, id);
 
     const updatedRoom = await this.prisma.room.update({
       where: { id },
@@ -84,21 +91,31 @@ export class RoomsService {
     };
   }
 
-  async deleteRoom(id: number) {
-    const room = await this.prisma.room.findUnique({ where: { id } });
-
-    if (!room) {
-      throw new NotFoundException('Room is Not found');
-    }
+  async deleteRoom(user: RequestUser, id: number) {
+    await this.ensureOwned(user, id);
 
     await this.prisma.room.update({
       where: { id },
-      data: { status: 'INACTIVE' },
+      data: { status: Status.INACTIVE },
     });
 
     return {
       success: true,
       message: 'Room deleted',
     };
+  }
+
+  /** Xona shu tashkilotnikimi — bo'lmasa "topilmadi". */
+  private async ensureOwned(user: RequestUser, id: number) {
+    const room = await this.prisma.room.findFirst({
+      where: { id, ...orgFilter(user) },
+      select: { id: true },
+    });
+
+    if (!room) {
+      throw new NotFoundException('Room is Not found');
+    }
+
+    return room;
   }
 }

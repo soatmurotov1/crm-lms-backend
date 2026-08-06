@@ -38,8 +38,11 @@ export class GroupsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
   @Get('students/:groupId')
-  getAllStudentGroupById(@Param('groupId', ParseIntPipe) groupId: number) {
-    return this.groupService.getAllStudentGroupById(groupId);
+  getAllStudentGroupById(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Req() req: Request,
+  ) {
+    return this.groupService.getAllStudentGroupById(groupId, req['user']);
   }
 
   @ApiOperation({

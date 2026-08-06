@@ -28,6 +28,10 @@ import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { CreateTeacherDto } from './dto/create.teachers.dto';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  RequestUser,
+} from 'src/common/guard/current-user.decorator';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
 import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
 
@@ -60,10 +64,11 @@ export class TeachersController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Post()
   createTeacher(
+    @CurrentUser() user: RequestUser,
     @Body() payload: CreateTeacherDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.teachersService.createTeacher(payload, file);
+    return this.teachersService.createTeacher(user, payload, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -72,8 +77,11 @@ export class TeachersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`,
   })
   @Get('all')
-  getAllTeacher(@Query() query: PaginationQueryDto) {
-    return this.teachersService.getAllTeachers(query);
+  getAllTeacher(
+    @CurrentUser() user: RequestUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.teachersService.getAllTeachers(user, query);
   }
 
   @ApiOperation({ summary: `${Role.TEACHER}` })
@@ -90,8 +98,8 @@ export class TeachersController {
     summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.ADMINSTRATOR}, ${Role.MANAGEMENT}`,
   })
   @Get(':id')
-  getOneTeacher(@Param('id') id: string) {
-    return this.teachersService.getOneTeacher(+id);
+  getOneTeacher(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.teachersService.getOneTeacher(user, +id);
   }
 
   @ApiConsumes('multipart/form-data')
@@ -119,27 +127,34 @@ export class TeachersController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Put(':id')
   updateTeacherById(
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateTeachersDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.teachersService.updateTeacherById(id, payload, file);
+    return this.teachersService.updateTeacherById(user, id, payload, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Put(':id/archive')
-  archiveTeacher(@Param('id', ParseIntPipe) id: number) {
-    return this.teachersService.toggleArchiveTeacher(id);
+  archiveTeacher(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.teachersService.toggleArchiveTeacher(user, id);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Delete(':id')
-  async deleteTeacher(@Param('id', ParseIntPipe) id: number) {
-    return this.teachersService.deleteTeacher(id);
+  async deleteTeacher(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.teachersService.deleteTeacher(user, id);
   }
 
   @ApiOperation({ summary: `${Role.TEACHER}` })

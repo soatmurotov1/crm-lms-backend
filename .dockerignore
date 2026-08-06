@@ -15,3 +15,5 @@ coverage
 .vscode
 .idea
 *.log
+# Baza nusxalari - image ichiga tushib qolmasin (hajm + maxfiy ma'lumot)
+backups

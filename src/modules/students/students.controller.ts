@@ -28,6 +28,10 @@ import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { CreateStudentDto } from './dto/create.students.dto';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  RequestUser,
+} from 'src/common/guard/current-user.decorator';
 import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
 
@@ -111,26 +115,30 @@ export class StudentsController {
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Post()
   createStudent(
+    @CurrentUser() user: RequestUser,
     @Body() payload: CreateStudentDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.studentsService.createStudent(payload, file);
+    return this.studentsService.createStudent(user, payload, file);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get('all')
-  getAllStudent(@Query() query: PaginationQueryDto) {
-    return this.studentsService.getAllStudents(query);
+  getAllStudent(
+    @CurrentUser() user: RequestUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.studentsService.getAllStudents(user, query);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Get(':id')
-  getOneStudent(@Param('id') id: string) {
-    return this.studentsService.getOneStudent(+id);
+  getOneStudent(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.studentsService.getOneStudent(user, +id);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -162,11 +170,12 @@ export class StudentsController {
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @Put(':id')
   updateStudent(
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Body() payload: UpdateStudentDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.studentsService.updateStudentById(+id, payload, file);
+    return this.studentsService.updateStudentById(user, +id, payload, file);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })

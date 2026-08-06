@@ -153,17 +153,19 @@ model User {
 }
 
 model Teacher {
-  id         Int        @id @default(autoincrement())
-  fullName   String
-  phone      String     @unique
-  photo      String?
-  password   String
-  position   String
-  experience Int
-  status     UserStatus @default(ACTIVE)
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  fullName       String
+  phone          String     @unique
+  photo          String?
+  password       String
+  position       String
+  experience     Int
+  status         UserStatus @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
 
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   groups          Group[]
   attendances     Attendance[]
   lessons         Lesson[]
@@ -174,19 +176,23 @@ model Teacher {
   exams           Exam[]
   examResults     ExamResult[]
   grades          Grade[]
+
+  @@index([organizationId])
 }
 
 model Student {
-  id         Int        @id @default(autoincrement())
-  fullName   String
-  phone      String     @unique
-  photo      String?
-  password   String
-  birth_date DateTime
-  status     UserStatus @default(ACTIVE)
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  fullName       String
+  phone          String     @unique
+  photo          String?
+  password       String
+  birth_date     DateTime
+  status         UserStatus @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
 
+  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   studentGroups     StudentGroup[]
   payments          Payment[]
   attendances       Attendance[]
@@ -195,51 +201,67 @@ model Student {
   examResponses     ExamResponse[]
   examResults       ExamResult[]
   grades            Grade[]
+
+  @@index([organizationId])
 }
 
 model Course {
   id             Int          @id @default(autoincrement())
-  name           String       @unique
+  name           String
   durationMonth  Int
   durationLesson Int
   status         Status       @default(ACTIVE)
   level          CourseLevel?
   price          Decimal
   description    String?
+  organizationId Int?
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
 
-  groups   Group[]
-  payments Payment[]
-  exams    Exam[]
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  groups       Group[]
+  payments     Payment[]
+  exams        Exam[]
+
+  // Kurs nomi tashkilot ichida takrorlanmaydi; boshqa tashkilotda esa
+  // xuddi shu nomdagi kurs bo'lishi mumkin.
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Room {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
-  capacity   Int
-  status     Status   @default(ACTIVE)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  capacity       Int
+  status         Status   @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  groups Group[]
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  groups       Group[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 
 model Group {
-  id         Int        @id @default(autoincrement())
-  teacherId  Int
-  userId     Int
-  roomId     Int
-  courseId   Int
-  name       String     @unique
-  startDate  DateTime
-  startTime  String
-  weekDays   WeekDays[]
-  status     Status     @default(ACTIVE)
-  created_at DateTime   @default(now())
-  updated_at DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  teacherId      Int
+  userId         Int
+  roomId         Int
+  courseId       Int
+  name           String
+  startDate      DateTime
+  startTime      String
+  weekDays       WeekDays[]
+  status         Status     @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
 
+  organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   studentGroup  StudentGroup[]
   payments      Payment[]
   teacher       Teacher        @relation(fields: [teacherId], references: [id])
@@ -251,7 +273,10 @@ model Group {
   grades        Grade[]
   notifications Notification[]
 
+  // Guruh nomi kurs ichida takrorlanmaydi. Kurs allaqachon bitta tashkilotga
+  // tegishli, ya'ni bu cheklov tashkilotlar orasida to'qnashmaydi.
   @@unique([courseId, name])
+  @@index([organizationId])
 }
 
 
@@ -567,6 +592,13 @@ model Organization {
   subscriptions  Subscription[]
   supportTickets SupportTicket[]
   notifications  Notification[]
+
+  // Tashkilotning o'z ma'lumotlari — boshqa tashkilot ularni ko'rmaydi.
+  teachers Teacher[]
+  students Student[]
+  courses  Course[]
+  rooms    Room[]
+  groups   Group[]
 }
 
 

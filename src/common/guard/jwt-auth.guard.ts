@@ -53,37 +53,59 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Hisob faol emas');
     }
 
-    // Rol doim bazadan olinadi — tokenda yozilganiga emas.
-    req.user = { ...payload, role: account.role };
+    /*
+      Rol ham, tashkilot ham doim bazadan olinadi — tokenda yozilganiga emas.
+      Tashkilot tokenga yozilsa, admin boshqa tashkilotga ko'chirilgach ham
+      eski tashkilot ma'lumotini 2 soat davomida ko'rishda davom etardi.
+    */
+    req.user = {
+      ...payload,
+      role: account.role,
+      organizationId: account.organizationId,
+    };
 
     return true;
   }
 
   /** Hisoblar uch xil jadvalda: rol qaysi jadvalga qarashni ko'rsatadi. */
-  private async loadAccount(
-    payload: TokenPayload,
-  ): Promise<{ status: UserStatus; role: Role } | null> {
+  private async loadAccount(payload: TokenPayload): Promise<{
+    status: UserStatus;
+    role: Role;
+    organizationId: number | null;
+  } | null> {
     if (!payload?.id || !payload.role) return null;
 
     if (payload.role === Role.STUDENT) {
       const student = await this.prisma.student.findUnique({
         where: { id: payload.id },
-        select: { status: true },
+        select: { status: true, organizationId: true },
       });
-      return student ? { status: student.status, role: Role.STUDENT } : null;
+      return student
+        ? {
+            status: student.status,
+            role: Role.STUDENT,
+            organizationId: student.organizationId,
+          }
+        : null;
     }
 
     if (payload.role === Role.TEACHER) {
       const teacher = await this.prisma.teacher.findUnique({
         where: { id: payload.id },
-        select: { status: true },
+        select: { status: true, organizationId: true },
       });
-      return teacher ? { status: teacher.status, role: Role.TEACHER } : null;
+      return teacher
+        ? {
+            status: teacher.status,
+            role: Role.TEACHER,
+            organizationId: teacher.organizationId,
+          }
+        : null;
     }
 
     return this.prisma.user.findUnique({
       where: { id: payload.id },
-      select: { status: true, role: true },
+      select: { status: true, role: true, organizationId: true },
     });
   }
 }

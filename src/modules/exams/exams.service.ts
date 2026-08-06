@@ -13,8 +13,10 @@ import {
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamResponseDto } from './dto/exam-response.dto';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { orgFilter } from 'src/common/utils/org-scope.util';
 
-type CurrentUser = { id: number; role: Role };
+type CurrentUser = RequestUser;
 
 /** Exam kartochkasida frontend kutayotgan maydonlar. */
 const examSelect = {
@@ -68,8 +70,13 @@ export class ExamsService {
    * student faqat o'zi a'zo bo'lgan guruhni ko'ra oladi.
    */
   private async assertGroupAccess(groupId: number, currentUser: CurrentUser) {
-    const existGroup = await this.prisma.group.findUnique({
-      where: { id: groupId },
+    /*
+      Guruh so'rov egasining tashkilotidami — barcha exam endpointlari shu
+      darvozadan o'tadi. Begona guruh "topilmadi" deb qaytadi: boshqa
+      tashkilotda bu id borligi oshkor bo'lmasin.
+    */
+    const existGroup = await this.prisma.group.findFirst({
+      where: { id: groupId, ...orgFilter(currentUser) },
       select: { id: true, teacherId: true },
     });
 

@@ -3,6 +3,8 @@ import { CreateLessonDto } from './dto/create-lesson.dto';
 import { Role, Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { orgFilter } from 'src/common/utils/org-scope.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class LessonsService {
@@ -11,7 +13,7 @@ export class LessonsService {
   async getOneLessonByGroupIdAndLessonId(
     groupId: number,
     lessonId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existGroup = await this.prisma.group.findFirst({
       where: {
@@ -19,6 +21,7 @@ export class LessonsService {
         status: Status.ACTIVE,
         teacherId:
           currentUser.role === Role.TEACHER ? currentUser.id : undefined,
+        ...orgFilter(currentUser),
       },
     });
 
@@ -54,7 +57,7 @@ export class LessonsService {
 
   async getLessonsByGroupId(
     groupId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existGroup = await this.prisma.group.findFirst({
       where: {
@@ -62,6 +65,7 @@ export class LessonsService {
         status: Status.ACTIVE,
         teacherId:
           currentUser.role === Role.TEACHER ? currentUser.id : undefined,
+        ...orgFilter(currentUser),
       },
     });
 
@@ -87,11 +91,15 @@ export class LessonsService {
 
   async createLesson(
     payload: CreateLessonDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const { lessonDate, ...lessonPayload } = payload;
     const existGroup = await this.prisma.group.findFirst({
-      where: { id: lessonPayload.groupId, status: Status.ACTIVE },
+      where: {
+        id: lessonPayload.groupId,
+        status: Status.ACTIVE,
+        ...orgFilter(currentUser),
+      },
     });
 
     if (!existGroup) {
@@ -124,9 +132,10 @@ export class LessonsService {
     groupId: number,
     lessonId: number,
     payload: UpdateLessonDto,
+    currentUser: RequestUser,
   ) {
     const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, status: Status.ACTIVE },
+      where: { id: groupId, status: Status.ACTIVE, ...orgFilter(currentUser) },
     });
 
     if (!existGroup) {
@@ -157,10 +166,10 @@ export class LessonsService {
   async deleteLessonById(
     groupId: number,
     lessonId: number,
-    currentUser: { id: number },
+    currentUser: RequestUser,
   ) {
     const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, status: Status.ACTIVE },
+      where: { id: groupId, status: Status.ACTIVE, ...orgFilter(currentUser) },
     });
 
     if (!existGroup) {

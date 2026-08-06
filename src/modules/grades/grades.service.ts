@@ -7,8 +7,10 @@ import { Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
+import { orgFilter } from 'src/common/utils/org-scope.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
-type CurrentUser = { id: number; role: Role };
+type CurrentUser = RequestUser;
 
 @Injectable()
 export class GradesService {
@@ -138,8 +140,9 @@ export class GradesService {
   }
 
   private async ensureGroupAccess(groupId: number, currentUser: CurrentUser) {
-    const group = await this.prisma.group.findUnique({
-      where: { id: groupId },
+    // Guruh so'rov egasining tashkilotidami — begonasi "topilmadi" bo'ladi.
+    const group = await this.prisma.group.findFirst({
+      where: { id: groupId, ...orgFilter(currentUser) },
       select: { id: true, teacherId: true },
     });
 

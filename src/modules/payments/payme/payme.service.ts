@@ -290,6 +290,26 @@ export class PaymeService {
       );
     }
 
+    // Tranzaksiya yaratilgandan keyin 12 soatgacha vaqt bor - shu orada
+    // admin to'lovni naqd sifatida belgilab qo'ygan bo'lishi mumkin. Unda
+    // bu yerda `PAID` qilish o'quvchidan ikkinchi marta pul olish demak.
+    // Xato qaytarsak Payme tranzaksiyani bekor qiladi va pulni qaytaradi.
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: transaction.paymentId },
+      select: { status: true },
+    });
+
+    if (payment?.status === PaymentStatus.PAID) {
+      throw new PaymeError(
+        PaymeErrorCode.UNABLE_TO_PERFORM,
+        paymeMessage(
+          "Bu to'lov allaqachon amalga oshirilgan",
+          'Платеж уже оплачен',
+          'Payment is already paid',
+        ),
+      );
+    }
+
     const performTime = BigInt(Date.now());
 
     // Tranzaksiya va to'lov holati birga yangilanadi: biri yozilib, ikkinchisi
@@ -340,18 +360,29 @@ export class PaymeService {
     const reason = Number(params?.reason) || null;
     const cancelTime = BigInt(Date.now());
 
-    const nextState =
-      transaction.state === PaymeState.PERFORMED
-        ? PaymeState.CANCELED_AFTER_PERFORM
-        : PaymeState.CANCELED;
+    const performed = transaction.state === PaymeState.PERFORMED;
+
+    const nextState = performed
+      ? PaymeState.CANCELED_AFTER_PERFORM
+      : PaymeState.CANCELED;
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.paymeTransaction.update({
         where: { id: transaction.id },
         data: { state: nextState, cancelTime, reason },
       }),
-      this.prisma.payment.update({
-        where: { id: transaction.paymentId },
+      // `updateMany` - chunki mos yozuv topilmasa `update` P2025 tashlaydi va
+      // butun tranzaksiyani, jumladan yuqoridagi holat yangilanishini ham,
+      // orqaga qaytarib yuboradi. Bu yerda esa "hech nima o'zgarmadi" to'g'ri
+      // natija.
+      this.prisma.payment.updateMany({
+        // Tranzaksiya to'lanmagan bo'lsa, to'lovni faqat u hali `PENDING`
+        // bo'lgandagina bekor qilamiz. Aks holda naqd qabul qilingan yoki
+        // boshqa tranzaksiya orqali to'langan yozuv shu yerda `CANCELED` ga
+        // aylanib, haqiqatan olingan pul hisobotdan yo'qolib ketardi.
+        where: performed
+          ? { id: transaction.paymentId }
+          : { id: transaction.paymentId, status: PaymentStatus.PENDING },
         data: {
           status: PaymentStatus.CANCELED,
           // To'langan bo'lib keyin qaytarilgan bo'lsa `paidAt` tozalanadi,

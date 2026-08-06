@@ -18,6 +18,11 @@ import {
   resolvePagination,
 } from 'src/common/utils/pagination.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import {
+  orgFilter,
+  resolveOwnerOrganizationId,
+} from 'src/common/utils/org-scope.util';
 
 @Injectable()
 export class TeachersService {
@@ -27,7 +32,12 @@ export class TeachersService {
     private verificationService: VerificationService,
   ) {}
 
-  async createTeacher(payload: CreateTeacherDto, file?: Express.Multer.File) {
+  async createTeacher(
+    user: RequestUser,
+    payload: CreateTeacherDto,
+    file?: Express.Multer.File,
+  ) {
+    const organizationId = resolveOwnerOrganizationId(user);
     let photoUrl: string | null = null;
     const normalizedPhone = normalizePhone(payload.phone);
     const plainPassword = payload.password.trim();
@@ -45,6 +55,7 @@ export class TeachersService {
         experience: Number(payload.experience),
         password: await hashPassword(plainPassword),
         photo: photoUrl,
+        organizationId,
       },
     });
 
@@ -78,25 +89,28 @@ export class TeachersService {
     }
   }
 
-  async getAllTeachers(query?: PaginationQueryDto) {
+  async getAllTeachers(user: RequestUser, query?: PaginationQueryDto) {
     const { take, skip } = resolvePagination(query);
+    // Har bir tashkilot faqat o'z o'qituvchilarini ko'radi.
+    const where = orgFilter(user);
 
     const [teachers, total] = await this.prisma.$transaction([
       this.prisma.teacher.findMany({
+        where,
         omit: { password: true },
         orderBy: { id: 'desc' },
         take,
         skip,
       }),
-      this.prisma.teacher.count(),
+      this.prisma.teacher.count({ where }),
     ]);
 
     return buildPaginatedResult(teachers, total, query, 'teachers/all');
   }
 
-  async getOneTeacher(id: number) {
-    const Teacher = await this.prisma.teacher.findUnique({
-      where: { id },
+  async getOneTeacher(user: RequestUser, id: number) {
+    const Teacher = await this.prisma.teacher.findFirst({
+      where: { id, ...orgFilter(user) },
       omit: { password: true },
     });
     if (!Teacher) {
@@ -135,12 +149,13 @@ export class TeachersService {
   }
 
   async updateTeacherById(
+    user: RequestUser,
     id: number,
     payload: UpdateTeachersDto,
     file?: Express.Multer.File,
   ) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id },
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id, ...orgFilter(user) },
     });
     if (!teacher) {
       throw new NotFoundException(`Not found teacherId ${id}`);
@@ -184,9 +199,9 @@ export class TeachersService {
    * Qolgan bog'lanishlar (dars, davomat, baho...) `teacherId` ni ixtiyoriy
    * qilgani uchun avtomatik `NULL` ga o'tadi va tarix saqlanib qoladi.
    */
-  async deleteTeacher(id: number) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id },
+  async deleteTeacher(user: RequestUser, id: number) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id, ...orgFilter(user) },
       select: { id: true, fullName: true },
     });
 
@@ -219,9 +234,9 @@ export class TeachersService {
     };
   }
 
-  async toggleArchiveTeacher(id: number) {
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id },
+  async toggleArchiveTeacher(user: RequestUser, id: number) {
+    const teacher = await this.prisma.teacher.findFirst({
+      where: { id, ...orgFilter(user) },
       select: { id: true, status: true },
     });
 

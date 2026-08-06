@@ -91,11 +91,24 @@ jobs:
               exit 1
             fi
 
-            # 8. Eski image qatlamlarini tozalash (build'dan KEYIN)
+            # 8. Kunlik zaxira cron'ini o'rnatish.
+            #
+            # Skript idempotent: o'z yozuvini almashtiradi, boshqa cron
+            # yozuvlariga tegmaydi. Shu sababli har deploy'da bemalol
+            # chaqirilaveradi va "yozilgan, lekin serverga o'rnatilmagan"
+            # holati qaytalanmaydi.
+            #
+            # Bu qadam deploy'ni YIQITMASLIGI kerak: zaxira sozlanmagani
+            # yomon, lekin ilovani yangilamay qoldirish undan ham yomon.
+            echo "==> Installing backup cron..."
+            chmod +x scripts/*.sh || true
+            ./scripts/install-backup-cron.sh || echo "WARNING: zaxira cron'ini o'rnatib bo'lmadi"
+
+            # 9. Eski image qatlamlarini tozalash (build'dan KEYIN)
             echo "==> Cleaning up old docker images..."
             docker image prune -f
 
-            # 9. Natijani ko'rsatish
+            # 10. Natijani ko'rsatish
             docker compose ps
             docker compose logs --tail=40 app
 

@@ -19,6 +19,10 @@ import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('payments')
 @ApiBearerAuth()
@@ -29,10 +33,12 @@ export class PaymentsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT)
   getMonthlySummary(
+    @CurrentUser() user: RequestUser,
     @Query('year') year?: string,
     @Query('month') month?: string,
   ) {
     return this.paymentsService.getMonthlySummary(
+      user,
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
     );
@@ -41,8 +47,12 @@ export class PaymentsController {
   @Get('summary/yearly')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT)
-  getYearlySummary(@Query('year') year?: string) {
+  getYearlySummary(
+    @CurrentUser() user: RequestUser,
+    @Query('year') year?: string,
+  ) {
     return this.paymentsService.getYearlySummary(
+      user,
       year ? Number(year) : undefined,
     );
   }
@@ -51,11 +61,13 @@ export class PaymentsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.MANAGEMENT)
   getAdminMonthlyPayments(
+    @CurrentUser() user: RequestUser,
     @Query('year') year?: string,
     @Query('month') month?: string,
     @Query('status') status?: string,
   ) {
     return this.paymentsService.getAdminMonthlyPayments(
+      user,
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
       status,
