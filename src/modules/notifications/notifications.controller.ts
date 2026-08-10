@@ -45,8 +45,11 @@ export class NotificationsController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @Get('all')
-  getAll(@Query('limit') limit?: string) {
-    return this.notificationsService.getAll(limit ? Number(limit) : undefined);
+  getAll(@Req() req: Request, @Query('limit') limit?: string) {
+    return this.notificationsService.getAll(
+      req['user'],
+      limit ? Number(limit) : undefined,
+    );
   }
 
   @ApiOperation({

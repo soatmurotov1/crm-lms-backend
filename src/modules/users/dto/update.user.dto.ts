@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 import { Role } from '@prisma/client';
-import { IsEnum } from 'class-validator';
 import { Transform } from 'class-transformer';
 import {
   normalizePhone,
   PHONE_FORMAT_MESSAGE,
   PHONE_REGEX,
 } from 'src/common/utils/phone.util';
+import { STAFF_ROLES } from 'src/common/utils/staff-roles.util';
 
 export class UpdateUserDto {
   @ApiProperty({ required: false })
@@ -31,8 +31,12 @@ export class UpdateUserDto {
   @IsString()
   address?: string;
 
-  @ApiProperty({ required: false, enum: Role })
+  // Faqat xodim rollari — sababi `staff-roles.util.ts` da.
+  @ApiProperty({ required: false, enum: STAFF_ROLES })
   @IsOptional()
-  @IsEnum(Role)
+  @IsIn(STAFF_ROLES, {
+    message:
+      "Rol faqat xodim roli bo'lishi mumkin (SUPERADMIN, ADMIN, MANAGEMENT, ADMINSTRATOR)",
+  })
   role?: Role;
 }

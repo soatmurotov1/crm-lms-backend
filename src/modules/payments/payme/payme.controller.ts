@@ -49,7 +49,7 @@ export class PaymeController {
     try {
       this.assertAuthorized(authorization);
 
-      const params = (body?.params ?? {}) as Record<string, unknown>;
+      const params = body?.params ?? {};
       const result = await this.dispatch(body?.method, params);
 
       return { result, id: rpcId };
@@ -88,7 +88,10 @@ export class PaymeController {
     }
   }
 
-  private dispatch(method: string | undefined, params: Record<string, unknown>) {
+  private dispatch(
+    method: string | undefined,
+    params: Record<string, unknown>,
+  ) {
     switch (method) {
       case 'CheckPerformTransaction':
         return this.paymeService.checkPerformTransaction(params);

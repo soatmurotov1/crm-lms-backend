@@ -3,7 +3,7 @@ import { Role } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
   IsDateString,
-  IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   Matches,
@@ -13,6 +13,7 @@ import {
   PHONE_FORMAT_MESSAGE,
   PHONE_REGEX,
 } from 'src/common/utils/phone.util';
+import { STAFF_ROLES } from 'src/common/utils/staff-roles.util';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'string' })
@@ -36,10 +37,22 @@ export class CreateUserDto {
   @IsDateString()
   hire_date: string;
 
-  @ApiProperty({ example: Role.STUDENT })
+  /*
+    Rol ixtiyoriy: xodim qo'shish formasida u tanlanmaydi, servis ADMIN qo'yadi.
+
+    Ro'yxat butun `Role` enum'i emas, faqat xodim rollari: o'qituvchi va
+    o'quvchi boshqa jadvallarda yashaydi va ID hisoblagichi ham alohida.
+    TEACHER roli berilgan `User` yozuvi begona o'qituvchining ID si sifatida
+    ishlatilib ketardi.
+  */
+  @ApiProperty({ required: false, enum: STAFF_ROLES, example: Role.ADMIN })
+  @IsOptional()
   @IsString()
-  @IsEnum(Role)
-  role: Role;
+  @IsIn(STAFF_ROLES, {
+    message:
+      "Rol faqat xodim roli bo'lishi mumkin (SUPERADMIN, ADMIN, MANAGEMENT, ADMINSTRATOR)",
+  })
+  role?: Role;
 
   @ApiProperty({ example: 'string' })
   @IsOptional()

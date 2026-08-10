@@ -123,3 +123,59 @@ server ko'tarish" yo'li hozir ishlamaydi.
 **3. Kunlik oraliq.** Eng yomon holatda 24 soatlik ma'lumot yo'qoladi. Bu
 yetarli bo'lmasa, keyingi qadam — WAL arxivlash (`pgBackRest` yoki `wal-g`)
 bilan istalgan daqiqaga qaytish.
+
+---
+
+# Bir martalik ma'lumot skriptlari
+
+## Eski xabarnomalarni tashkilotga biriktirish
+
+`backfill-notification-org.js`
+
+2026-08-10 gacha `Notification.organizationId` so'rovdan kelardi va ko'pincha
+bo'sh qolardi. Bo'sh qolgan xabarnoma esa rol bo'yicha auditoriyada
+(`ALL`, `STUDENTS`, `TEACHERS`, `ADMINS`) **hamma tashkilotdagi** foydalanuvchiga
+ko'rinadi — ya'ni bitta markazning e'loni butun platformaga tarqalgan. Kod
+tuzatildi, bu skript esa eski qatorlarni tartibga soladi.
+
+Avval nima o'zgarishini ko'ring (hech narsa yozilmaydi):
+
+```bash
+node scripts/backfill-notification-org.js
+```
+
+Natija:
+
+```
+Xabarnomalar: jami 9, tashkilotsiz 9
+
+      1  guruh orqali (eng ishonchli)
+      1  qabul qiluvchi o'quvchi orqali
+      ...
+Biriktirildi: 7
+
+Tashkilotsiz qolganlari:
+      1  ADMIN / ALL
+      1  SUPERADMIN / ALL  <- ataylab: platforma e'loni
+```
+
+Raqamlar to'g'ri bo'lsa, yozing:
+
+```bash
+node scripts/backfill-notification-org.js --apply
+```
+
+Tashkilot quyidagi tartibda aniqlanadi — yuqoridagisi ishonchliroq:
+guruh → qabul qiluvchi → yuboruvchi. **SUPERADMIN yozgan xabarnomalarga
+tegilmaydi**: ular butun platformaga mo'ljallangan umumiy e'lon va
+`organizationId = NULL` aynan shuni bildiradi.
+
+Hech qanday belgi bo'yicha aniqlab bo'lmaganlarni majburan bittasiga berish
+mumkin (bitta markazli o'rnatmalarda qulay):
+
+```bash
+node scripts/backfill-notification-org.js --apply --fallback-org=2
+```
+
+Skript **qayta chaqirilsa xavfsiz** — faqat `organizationId IS NULL`
+qatorlarga tegadi va hammasi bitta tranzaksiyada bajariladi.

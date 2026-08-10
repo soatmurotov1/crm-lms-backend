@@ -103,8 +103,9 @@ export class PaymentsController {
   startStudentPayment(
     @Param('studentId', ParseIntPipe) studentId: number,
     @Body() payload: StartPaymentDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.paymentsService.startStudentPayment(studentId, payload);
+    return this.paymentsService.startStudentPayment(studentId, payload, user);
   }
 
   @Patch(':paymentId/mark-paid')
@@ -113,8 +114,9 @@ export class PaymentsController {
   markPaymentPaid(
     @Param('paymentId', ParseIntPipe) paymentId: number,
     @Body() payload: MarkPaymentDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.paymentsService.markPaymentPaid(paymentId, payload);
+    return this.paymentsService.markPaymentPaid(paymentId, payload, user);
   }
 
   @Patch(':paymentId/status')
@@ -123,7 +125,8 @@ export class PaymentsController {
   updatePaymentStatus(
     @Param('paymentId', ParseIntPipe) paymentId: number,
     @Body() payload: UpdatePaymentStatusDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.paymentsService.updatePaymentStatus(paymentId, payload);
+    return this.paymentsService.updatePaymentStatus(paymentId, payload, user);
   }
 }

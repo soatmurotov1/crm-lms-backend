@@ -14,6 +14,8 @@ import { PrismaService } from 'src/common/prisma/prisma.service';
 import { hashPassword } from 'src/common/bcrypt/bcrypt';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { isSuperAdmin } from 'src/common/utils/org-scope.util';
 
 /// Tashkilot bilan birga ochiladigan admin hisobning lavozimi.
 const ORG_ADMIN_POSITION = 'Tashkilot admini';
@@ -31,10 +33,24 @@ const ADMIN_SELECT = {
 export class OrganizationsService {
   constructor(private prisma: PrismaService) {}
 
-  async getAll(status?: string) {
+  /**
+   * Tashkilotlar ro'yxati.
+   *
+   * SUPERADMIN — platforma egasi, hammasini ko'radi. Tashkilot admini esa
+   * faqat o'zinikini: ilgari bu ro'yxat hamma markazni, har birining ADMIN
+   * hisobi (ismi, telefoni) va tarif rejasi bilan birga qaytarardi — ya'ni
+   * raqib markazning aloqa ma'lumoti ochiq edi.
+   */
+  async getAll(currentUser: RequestUser, status?: string) {
+    const scope = isSuperAdmin(currentUser)
+      ? {}
+      : { id: currentUser?.organizationId ?? -1 };
+
     const organizations = await this.prisma.organization.findMany({
-      where:
-        status && status !== 'ALL' ? { status: status as Status } : undefined,
+      where: {
+        ...scope,
+        ...(status && status !== 'ALL' ? { status: status as Status } : {}),
+      },
       include: {
         subscriptions: {
           where: { status: SubscriptionStatus.ACTIVE },
@@ -65,7 +81,13 @@ export class OrganizationsService {
     };
   }
 
-  async getOne(id: number) {
+  async getOne(id: number, currentUser: RequestUser) {
+    // Tashkilot admini faqat o'z tashkilotini ocha oladi; begonasi uchun
+    // "topilmadi" — boshqa markaz borligi ham oshkor bo'lmasin.
+    if (!isSuperAdmin(currentUser) && currentUser?.organizationId !== id) {
+      throw new NotFoundException('Tashkilot topilmadi');
+    }
+
     const organization = await this.prisma.organization.findUnique({
       where: { id },
       include: {
@@ -269,8 +291,14 @@ export class OrganizationsService {
   private async ensurePhoneIsFree(phone: string, excludeUserId?: number) {
     const [user, teacher, student] = await Promise.all([
       this.prisma.user.findUnique({ where: { phone }, select: { id: true } }),
-      this.prisma.teacher.findUnique({ where: { phone }, select: { id: true } }),
-      this.prisma.student.findUnique({ where: { phone }, select: { id: true } }),
+      this.prisma.teacher.findUnique({
+        where: { phone },
+        select: { id: true },
+      }),
+      this.prisma.student.findUnique({
+        where: { phone },
+        select: { id: true },
+      }),
     ]);
 
     const takenByOther =

@@ -1,4 +1,4 @@
-import { HomeworkStatus, Role, Status } from '@prisma/client';
+import { HomeworkStatus, Role } from '@prisma/client';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,18 +8,29 @@ import {
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { HomeworkStatusDto } from './dto/homework.status.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
-import { orgFilter } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class HomeworkService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
   async getHomeworkById(
     homeworkId: number,
     query: HomeworkStatusDto,
     currentUser: RequestUser,
   ) {
+    /*
+      Ilgari bu yerda o'quvchi uchun `homework.userId !== currentUser.id`
+      tekshiruvi turardi. `Homework.userId` — vazifani YARATGAN xodim (User
+      jadvali), o'quvchi emas. Jadvallarning ID hisoblagichi alohida bo'lgani
+      uchun bu solishtiruv tasodifan mos kelgan raqamlarda o'tib ketardi va
+      mos kelmaganda haqiqiy egasini ham to'sardi — ya'ni har ikki tomonga
+      xato edi. To'g'ri savol: o'quvchi shu vazifaning guruhida bormi.
+    */
     const existHomework = await this.prisma.homework.findUnique({
       where: {
         id: homeworkId,
@@ -30,31 +41,7 @@ export class HomeworkService {
       throw new NotFoundException('Homework not found');
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      const homeworkGroup = await this.prisma.group.findFirst({
-        where: {
-          id: existHomework.groupId,
-          ...orgFilter(currentUser),
-        },
-        select: {
-          teacherId: true,
-        },
-      });
-
-      if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
-        throw new ForbiddenException('Bu sening homeworking emas');
-      }
-    }
-
-    if (
-      currentUser.role === Role.STUDENT &&
-      existHomework.userId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    await this.orgAccess.assertGroupAccess(currentUser, existHomework.groupId);
 
     if (query.status === HomeworkStatus.PENDING) {
       const reviewedStudentIds = await this.prisma.homeworkResult.findMany({
@@ -194,42 +181,8 @@ export class HomeworkService {
     };
   }
 
-  async getAllHomeworkByGroup(
-    groupId: number,
-    currentUser: RequestUser,
-  ) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: groupId,
-        status: 'ACTIVE',
-        ...orgFilter(currentUser),
-      },
-    });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existGroup.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
-
-    if (currentUser.role === Role.STUDENT) {
-      const studentInGroup = await this.prisma.studentGroup.findFirst({
-        where: {
-          groupId,
-          studentId: currentUser.id,
-          status: Status.ACTIVE,
-        },
-      });
-
-      if (!studentInGroup) {
-        throw new ForbiddenException('Bu sening guruhing emas');
-      }
-    }
+  async getAllHomeworkByGroup(groupId: number, currentUser: RequestUser) {
+    await this.orgAccess.assertGroupAccess(currentUser, groupId);
 
     const homeworks = await this.prisma.homework.findMany({
       where: {
@@ -272,24 +225,9 @@ export class HomeworkService {
     currentUser: RequestUser,
     filename?: string,
   ) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: payload.groupId,
-        status: 'ACTIVE',
-        ...orgFilter(currentUser),
-      },
+    await this.orgAccess.assertGroupAccess(currentUser, payload.groupId, {
+      requireActive: true,
     });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role == Role.TEACHER &&
-      existGroup.teacherId != currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
 
     const existLesson = await this.prisma.lesson.findUnique({
       where: {
@@ -312,8 +250,14 @@ export class HomeworkService {
         durationTime: payload.durationTime ?? 16,
         groupId: payload.groupId,
         lessonId: payload.lessonId,
+        /*
+          `userId` — User jadvaliga FK, ya'ni unga faqat xodim raqami
+          yozilishi mumkin. Ilgari bu yerda `role === STUDENT` sharti turardi:
+          o'quvchi bu endpointga umuman kira olmaydi, shuning uchun amalda
+          har doim `null` yozilib, vazifani kim yaratgani yo'qolardi.
+        */
         teacherId: currentUser.role === Role.TEACHER ? currentUser.id : null,
-        userId: currentUser.role === Role.STUDENT ? currentUser.id : null,
+        userId: currentUser.role === Role.TEACHER ? null : currentUser.id,
       },
     });
 
@@ -339,34 +283,17 @@ export class HomeworkService {
       throw new NotFoundException('Homework not found with this id');
     }
 
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    // Vazifaning O'ZI so'rov egasiga tegishlimi.
+    await this.orgAccess.assertHomeworkAccess(currentUser, homeworkId);
 
     const targetGroupId = payload.groupId ?? existHomework.groupId;
     const targetLessonId = payload.lessonId ?? existHomework.lessonId;
 
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: targetGroupId,
-        ...orgFilter(currentUser),
-        status: 'ACTIVE',
-      },
+    // Vazifa boshqa guruhga ko'chirilayotgan bo'lsa, YANGI guruh ham
+    // tekshiriladi: aks holda uni begona guruhga surib yuborish mumkin edi.
+    await this.orgAccess.assertGroupAccess(currentUser, targetGroupId, {
+      requireActive: true,
     });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existGroup.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
 
     const existLesson = await this.prisma.lesson.findUnique({
       where: {
@@ -414,25 +341,13 @@ export class HomeworkService {
     return this.updateHomework(homeworkId, payload, currentUser, filename);
   }
 
-  async deleteHomework(
-    homeworkId: number,
-    currentUser: RequestUser,
-  ) {
-    const existHomework = await this.prisma.homework.findUnique({
-      where: { id: homeworkId },
-      select: { id: true, teacherId: true },
-    });
-
-    if (!existHomework) {
-      throw new NotFoundException('Homework not found with this id');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+  async deleteHomework(homeworkId: number, currentUser: RequestUser) {
+    /*
+      Ilgari bu yerda faqat o'qituvchi tekshirilardi: boshqa tashkilotning
+      admini begona `homeworkId` ni yuborib, uni javoblari bilan birga
+      o'chirib yuborishi mumkin edi.
+    */
+    await this.orgAccess.assertHomeworkAccess(currentUser, homeworkId);
 
     await this.prisma.$transaction([
       this.prisma.homeworkResult.deleteMany({ where: { homeworkId } }),

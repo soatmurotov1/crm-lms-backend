@@ -1,10 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role, Status } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import {
   CloudinaryService,
@@ -14,7 +13,7 @@ import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamResponseDto } from './dto/exam-response.dto';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
-import { orgFilter } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 
 type CurrentUser = RequestUser;
 
@@ -63,50 +62,18 @@ export class ExamsService {
   constructor(
     private prisma: PrismaService,
     private cloudinary: CloudinaryService,
+    private orgAccess: OrgAccessService,
   ) {}
 
   /**
    * Guruhga kirish huquqini tekshiradi: teacher faqat o'z guruhini,
    * student faqat o'zi a'zo bo'lgan guruhni ko'ra oladi.
+   *
+   * Tekshiruvning o'zi umumiy `OrgAccessService` da — bir xil qoida uchta
+   * modulda uch nusxada yozilgan edi.
    */
   private async assertGroupAccess(groupId: number, currentUser: CurrentUser) {
-    /*
-      Guruh so'rov egasining tashkilotidami — barcha exam endpointlari shu
-      darvozadan o'tadi. Begona guruh "topilmadi" deb qaytadi: boshqa
-      tashkilotda bu id borligi oshkor bo'lmasin.
-    */
-    const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, ...orgFilter(currentUser) },
-      select: { id: true, teacherId: true },
-    });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existGroup.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
-
-    if (currentUser.role === Role.STUDENT) {
-      const studentInGroup = await this.prisma.studentGroup.findFirst({
-        where: {
-          groupId,
-          studentId: currentUser.id,
-          status: Status.ACTIVE,
-        },
-        select: { id: true },
-      });
-
-      if (!studentInGroup) {
-        throw new ForbiddenException('Bu sening guruhing emas');
-      }
-    }
-
-    return existGroup;
+    return this.orgAccess.assertGroupAccess(currentUser, groupId);
   }
 
   /** Dars berilgan bo'lsa, u shu guruhga tegishli ekanini tekshiradi. */
@@ -138,7 +105,7 @@ export class ExamsService {
   private assertDateRange(startAt?: Date | null, endAt?: Date | null) {
     if (startAt && endAt && startAt.getTime() > endAt.getTime()) {
       throw new BadRequestException(
-        'Tugash vaqti boshlanish vaqtidan keyin bo\'lishi kerak',
+        "Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak",
       );
     }
   }
@@ -399,7 +366,11 @@ export class ExamsService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinary.uploadFile(
+        file,
+        'exams/responses',
+        DOCUMENT_MIME_TYPES,
+      );
     }
 
     const response = await this.prisma.examResponse.create({
@@ -449,7 +420,11 @@ export class ExamsService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'exams/responses', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinary.uploadFile(
+        file,
+        'exams/responses',
+        DOCUMENT_MIME_TYPES,
+      );
     }
 
     const response = await this.prisma.examResponse.update({

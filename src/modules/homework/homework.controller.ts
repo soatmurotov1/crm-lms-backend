@@ -107,7 +107,11 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'homeworks',
+        DOCUMENT_MIME_TYPES,
+      );
     }
     return this.homeworkService.createHomework(payload, req['user'], fileUrl);
   }
@@ -145,7 +149,11 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'homeworks',
+        DOCUMENT_MIME_TYPES,
+      );
     }
     return this.homeworkService.updateHomework(
       homeworkId,
@@ -188,7 +196,11 @@ export class HomeworkController {
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'homeworks', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'homeworks',
+        DOCUMENT_MIME_TYPES,
+      );
     }
     return this.homeworkService.updateHomeworkByTeacher(
       homeworkId,

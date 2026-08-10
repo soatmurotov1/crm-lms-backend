@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -6,10 +7,11 @@ import {
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update.user.dto';
+import { ChangeUserPasswordDto } from './dto/change-user-password.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateUserDto } from './dto/create.users.dto';
-import { hashPassword } from 'src/common/bcrypt/bcrypt';
+import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { normalizePhone } from 'src/common/utils/phone.util';
 import { VerificationService } from 'src/modules/auth/verification.service';
 import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
@@ -44,6 +46,10 @@ export class UsersService {
       throw new ForbiddenException('SUPERADMIN hisobini yarata olmaysiz');
     }
 
+    // Xodim qo'shish formasida rol tanlanmaydi — yangi xodim tashkilotning
+    // oddiy ADMIN xodimi bo'ladi (rolni faqat SUPERADMIN keyin o'zgartiradi).
+    const role = payload.role ?? Role.ADMIN;
+
     // Yangi xodim so'rov egasining tashkilotiga biriktiriladi.
     const organizationId = resolveOwnerOrganizationId(currentUser);
 
@@ -60,6 +66,7 @@ export class UsersService {
     await this.prisma.user.create({
       data: {
         ...payload,
+        role,
         phone: normalizedPhone,
         password: await hashPassword(plainPassword),
         hire_date: new Date(payload.hire_date),
@@ -204,6 +211,51 @@ export class UsersService {
     return {
       success: true,
       message: 'User updated successfully',
+    };
+  }
+
+  /**
+   * Xodim o'z parolini almashtiradi (ADMIN, SUPERADMIN, MANAGEMENT,
+   * ADMINSTRATOR). O'quvchi/o'qituvchidagi bilan bir xil qoida: amaldagi parol
+   * tekshiriladi va yangi parol eskisidan farq qilishi shart.
+   */
+  async changeMyPassword(
+    currentUser: CurrentUser,
+    payload: ChangeUserPasswordDto,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User is Not found');
+    }
+
+    const oldPasswordValid = await comparePassword(
+      payload.oldPassword,
+      user.password,
+    );
+
+    if (!oldPasswordValid) {
+      throw new BadRequestException("Amaldagi parol noto'g'ri");
+    }
+
+    if (payload.oldPassword === payload.newPassword) {
+      throw new BadRequestException(
+        "Amaldagi va yangi parol bir xil bo'lmasligi kerak",
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: await hashPassword(payload.newPassword),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Parol muvaffaqiyatli yangilandi',
     };
   }
 

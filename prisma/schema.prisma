@@ -480,6 +480,20 @@ model LoginLog {
   loginType  String   @default("user")
   success    Boolean  @default(true)
   created_at DateTime @default(now())
+
+  /**
+   * Log yozilayotgan paytda hisob qaysi tashkilotda edi. Tashkilot admini
+   * faqat o'z xodimlarining urinishlarini ko'rishi uchun kerak — hisobni
+   * keyin qidirib topish esa ishonchsiz, chunki raqam almashishi mumkin.
+   */
+  organizationId Int?
+
+  // "Shu raqamga qancha muvaffaqiyatsiz urinish bo'ldi" va "shu IP dan
+  // qancha" - brute-force tekshiruvining ikkala savoli ham shu indekslarga
+  // tayanadi.
+  @@index([userPhone, created_at])
+  @@index([ipAddress, created_at])
+  @@index([organizationId, success, created_at])
 }
 
 enum VerificationPurpose {
@@ -501,13 +515,31 @@ model VerificationCode {
   @@index([phone, purpose])
 }
 
+/**
+ * Bitta qurilmadagi bitta sessiya.
+ *
+ * `sessionId` access token ichiga `sid` bo'lib yoziladi, shuning uchun bu
+ * jadvaldagi qator o'chirilishi bilan o'sha access token ham darhol kuchini
+ * yo'qotadi — muddati tugashini kutish shart emas.
+ *
+ * `token` — refresh tokenning ochiq matni emas, sha256 hash'i. Baza sizib
+ * chiqsa ham undan ishlaydigan sessiya yasab bo'lmaydi.
+ */
 model RefreshToken {
-  id         Int      @id @default(autoincrement())
-  token      String   @unique
+  id         Int       @id @default(autoincrement())
+  token      String    @unique
+  sessionId  String    @unique
   userId     Int
   userType   String
   expiresAt  DateTime
-  created_at DateTime @default(now())
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  userAgent  String?
+  ipAddress  String?
+  created_at DateTime  @default(now())
+
+  @@index([userId, userType])
+  @@index([expiresAt])
 }
 
 model Exam {

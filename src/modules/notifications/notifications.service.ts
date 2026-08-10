@@ -7,8 +7,15 @@ import {
 import { NotificationAudience, Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { isSuperAdmin, orgFilter } from 'src/common/utils/org-scope.util';
 
-type CurrentUser = { id: number; role: Role };
+/**
+ * `AuthGuard` biriktirgan to'liq foydalanuvchi. Ilgari bu yerda faqat
+ * `{ id, role }` turardi — `organizationId` bo'lmagani uchun tashkilot
+ * bo'yicha filtrlash imkonsiz edi.
+ */
+type CurrentUser = RequestUser;
 
 const ADMIN_ROLES: Role[] = [
   Role.ADMIN,
@@ -45,10 +52,21 @@ export class NotificationsService {
     const groupIds = await this.getGroupIdsForUser(currentUser);
     const organizationId = await this.getOrganizationIdForUser(currentUser);
 
+    /*
+      Rol bo'yicha yuborilgan xabarnomalar (ALL, STUDENTS, TEACHERS, ADMINS)
+      ham tashkilot bilan cheklanadi. Busiz bitta markaz admini "hammaga"
+      yozganda xabar butun platformadagi foydalanuvchilarga chiqib ketardi.
+      `organizationId: null` — platforma egasining umumiy e'loni, u hammaga
+      ko'rinadi.
+    */
+    const audienceOrgScope = organizationId
+      ? { OR: [{ organizationId }, { organizationId: null }] }
+      : {};
+
     const notifications = await this.prisma.notification.findMany({
       where: {
         OR: [
-          { audience: { in: audiences } },
+          { audience: { in: audiences }, ...audienceOrgScope },
           {
             audience: NotificationAudience.USER,
             recipientRole: currentUser.role,
@@ -99,9 +117,17 @@ export class NotificationsService {
     };
   }
 
-  /** Admin / superadmin uchun yuborilgan xabarnomalar tarixi. */
-  async getAll(limit = 100) {
+  /**
+   * Admin / superadmin uchun yuborilgan xabarnomalar tarixi.
+   *
+   * Ilgari bu metod so'rov egasini bilmasdi va butun bazani qaytarardi:
+   * bitta markaz admini boshqa markazlarning xabarnomalarini, matni bilan
+   * birga ko'rardi. Endi SUPERADMIN dan boshqasi faqat o'z tashkilotini
+   * ko'radi.
+   */
+  async getAll(currentUser: CurrentUser, limit = 100) {
     const notifications = await this.prisma.notification.findMany({
+      where: orgFilter(currentUser),
       include: {
         ...RELATION_INCLUDE,
         _count: { select: { reads: true } },
@@ -121,8 +147,9 @@ export class NotificationsService {
     }
 
     if (payload.groupId) {
-      const group = await this.prisma.group.findUnique({
-        where: { id: payload.groupId },
+      // Guruh ham so'rov egasining tashkilotidan bo'lishi shart.
+      const group = await this.prisma.group.findFirst({
+        where: { id: payload.groupId, ...orgFilter(currentUser) },
         select: { id: true, teacherId: true },
       });
 
@@ -163,26 +190,42 @@ export class NotificationsService {
       }
     }
 
-    // Aniq tashkilotga yuborish: xabar shu tashkilotga biriktirilgan
-    // foydalanuvchilarga ko'rinadi.
-    let organizationId: number | undefined;
-    if (audience === NotificationAudience.ORGANIZATION) {
-      if (!payload.organizationId) {
+    /*
+      Xabarnoma qaysi tashkilotga tegishli.
+
+      Tashkilot so'rovdan emas, sessiyadan olinadi: ilgari markaz admini
+      "hammaga" yozganda `organizationId` bo'sh qolar va xabar butun
+      platformaga tarqalardi. Faqat SUPERADMIN tashkilotni o'zi tanlaydi
+      (yoki bo'sh qoldirib, hamma uchun umumiy e'lon yozadi).
+    */
+    let organizationId: number | null;
+
+    if (isSuperAdmin(currentUser)) {
+      if (
+        audience === NotificationAudience.ORGANIZATION &&
+        !payload.organizationId
+      ) {
         throw new BadRequestException('Tashkilot tanlanmagan');
       }
 
-      const organization = await this.prisma.organization.findUnique({
-        where: { id: payload.organizationId },
-        select: { id: true },
-      });
+      if (payload.organizationId) {
+        const organization = await this.prisma.organization.findUnique({
+          where: { id: payload.organizationId },
+          select: { id: true },
+        });
 
-      if (!organization) {
-        throw new NotFoundException('Tashkilot topilmadi');
+        if (!organization) {
+          throw new NotFoundException('Tashkilot topilmadi');
+        }
       }
 
-      organizationId = organization.id;
+      organizationId = payload.organizationId ?? null;
     } else {
-      organizationId = payload.organizationId;
+      organizationId = currentUser.organizationId ?? null;
+
+      if (audience === NotificationAudience.ORGANIZATION && !organizationId) {
+        throw new BadRequestException('Hisobingiz tashkilotga biriktirilmagan');
+      }
     }
 
     // Aniq bir shaxsga yuborish: hisob uch jadvaldan birida bo'ladi.
@@ -195,6 +238,7 @@ export class NotificationsService {
       recipientName = await this.getAccountName(
         payload.recipientRole,
         payload.recipientId,
+        currentUser,
       );
 
       if (recipientName === null) {
@@ -289,8 +333,10 @@ export class NotificationsService {
       throw new ForbiddenException('Ruxsat yo‘q');
     }
 
-    const notification = await this.prisma.notification.findUnique({
-      where: { id },
+    // Tashkilot filtri shart: busiz begona `id` yuborib, boshqa markazning
+    // xabarnomasini o'chirib tashlash mumkin edi.
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, ...orgFilter(currentUser) },
       select: { id: true },
     });
 
@@ -342,9 +388,7 @@ export class NotificationsService {
     });
 
     if (!membership) {
-      throw new ForbiddenException(
-        "Bu o'quvchi sizning guruhlaringizda emas",
-      );
+      throw new ForbiddenException("Bu o'quvchi sizning guruhlaringizda emas");
     }
   }
 
@@ -369,25 +413,38 @@ export class NotificationsService {
    * Rol va id bo'yicha hisob egasining ismini qaytaradi.
    * Hisob topilmasa `null` qaytadi.
    */
-  private async getAccountName(role: Role, id: number) {
+  /**
+   * Qabul qiluvchining ismi.
+   *
+   * Tashkilot filtri shart: busiz `recipientId` ni almashtirib, boshqa
+   * markazdagi odamning to'liq ismini javobdan o'qib olish mumkin edi
+   * (xabarnoma javobida `recipientName` qaytadi).
+   */
+  private async getAccountName(
+    role: Role,
+    id: number,
+    currentUser: CurrentUser,
+  ) {
+    const scope = orgFilter(currentUser);
+
     if (role === Role.TEACHER) {
-      const teacher = await this.prisma.teacher.findUnique({
-        where: { id },
+      const teacher = await this.prisma.teacher.findFirst({
+        where: { id, ...scope },
         select: { fullName: true },
       });
       return teacher?.fullName ?? null;
     }
 
     if (role === Role.STUDENT) {
-      const student = await this.prisma.student.findUnique({
-        where: { id },
+      const student = await this.prisma.student.findFirst({
+        where: { id, ...scope },
         select: { fullName: true },
       });
       return student?.fullName ?? null;
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...scope },
       select: { fullName: true, role: true },
     });
 

@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { AttendanceStatus, Role } from '@prisma/client';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
+import { isSuperAdmin, orgFilter } from 'src/common/utils/org-scope.util';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class AttendanceService {
@@ -27,17 +30,19 @@ export class AttendanceService {
     };
   }
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
-  async getAttendanceByLesson(lessonId: number) {
-    const existLesson = await this.prisma.lesson.findUnique({
-      where: {
-        id: lessonId,
-      },
-    });
-    if (!existLesson) {
-      throw new NotFoundException('Lesson not found with this id');
-    }
+  async getAttendanceByLesson(lessonId: number, currentUser: RequestUser) {
+    /*
+      Ilgari bu metod so'rov egasini umuman bilmasdi: rol darajasidagi ruxsat
+      (o'qituvchi yoki admin) yetarli deb hisoblanardi. Natijada boshqa
+      tashkilotning `lessonId` si bilan uning davomat jurnali — o'quvchilar
+      ismi va rasmigacha — ochilib ketardi.
+    */
+    await this.orgAccess.assertLessonAccess(currentUser, lessonId);
 
     const lessonStudents = await this.prisma.attendance.findMany({
       where: {
@@ -69,15 +74,33 @@ export class AttendanceService {
    * Lesson modelida dars sanasi maydoni yo'q, shuning uchun guruhlash
    * Attendance.created_at (davomat belgilangan vaqt) bo'yicha amalga oshiriladi.
    */
-  async getWeeklyStats(groupId?: number) {
+  async getWeeklyStats(currentUser: RequestUser, groupId?: number) {
     const since = new Date();
     since.setDate(since.getDate() - 6);
     since.setHours(0, 0, 0, 0);
 
+    // Aniq guruh so'ralgan bo'lsa — u so'rov egasiga tegishlimi.
+    if (groupId) {
+      await this.orgAccess.assertGroupAccess(currentUser, groupId);
+    }
+
+    /*
+      Guruh ko'rsatilmasa statistika hamma guruh bo'yicha chiqadi. Ilgari bu
+      "hamma" so'zma-so'z hamma tashkilotni bildirardi: bitta markaz admini
+      boshqa markazlarning davomat ko'rsatkichini ko'rardi. Endi doim
+      o'zining tashkiloti (o'qituvchi uchun esa o'z guruhlari) bilan
+      cheklanadi.
+    */
+    const scope = isSuperAdmin(currentUser)
+      ? {}
+      : currentUser?.role === Role.TEACHER
+        ? { lesson: { group: { teacherId: currentUser.id } } }
+        : { lesson: { group: orgFilter(currentUser) } };
+
     const records = await this.prisma.attendance.findMany({
       where: {
         created_at: { gte: since },
-        ...(groupId ? { lesson: { groupId } } : {}),
+        ...(groupId ? { lesson: { groupId } } : scope),
       },
       select: {
         isPresent: true,
@@ -118,32 +141,12 @@ export class AttendanceService {
 
   async createAttendance(
     payload: CreateAttendanceDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    const existLesson = await this.prisma.lesson.findUnique({
-      where: {
-        id: payload.lessonId,
-      },
-      select: {
-        id: true,
-        group: {
-          select: {
-            teacherId: true,
-          },
-        },
-      },
-    });
-
-    if (!existLesson) {
-      throw new NotFoundException('Lesson not found with this id');
-    }
-
-    if (
-      currentUser.role == Role.TEACHER &&
-      existLesson.group.teacherId != currentUser.id
-    ) {
-      throw new NotFoundException('Bu sening darsing emas');
-    }
+    const lesson = await this.orgAccess.assertLessonAccess(
+      currentUser,
+      payload.lessonId,
+    );
 
     const existStudent = await this.prisma.student.findUnique({
       where: {
@@ -154,6 +157,13 @@ export class AttendanceService {
     if (!existStudent) {
       throw new NotFoundException('Student not found with this id');
     }
+
+    // O'quvchi shu darsning guruhida bo'lishi shart: aks holda begona
+    // o'quvchiga ham davomat yozib qo'yish mumkin edi.
+    await this.orgAccess.assertStudentInGroup(
+      payload.studentId,
+      lesson.groupId,
+    );
 
     const state = this.resolveAttendanceState(payload);
 
@@ -176,7 +186,7 @@ export class AttendanceService {
 
   async updateAttendance(
     payload: CreateAttendanceDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existAttendance = await this.prisma.attendance.findFirst({
       where: {
@@ -189,29 +199,9 @@ export class AttendanceService {
         'Attendance not found with this lesson id and student id',
       );
     }
-    const existLesson = await this.prisma.lesson.findUnique({
-      where: {
-        id: payload.lessonId,
-      },
-      select: {
-        id: true,
-        group: {
-          select: {
-            teacherId: true,
-          },
-        },
-      },
-    });
-    if (!existLesson) {
-      throw new NotFoundException('Lesson not found with this id');
-    }
 
-    if (
-      currentUser.role == Role.TEACHER &&
-      existLesson.group.teacherId != currentUser.id
-    ) {
-      throw new NotFoundException('Bu sening darsing emas');
-    }
+    await this.orgAccess.assertLessonAccess(currentUser, payload.lessonId);
+
     const state = this.resolveAttendanceState(payload);
 
     await this.prisma.attendance.update({
