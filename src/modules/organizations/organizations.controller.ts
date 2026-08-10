@@ -8,8 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -28,15 +30,15 @@ export class OrganizationsController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get('all')
-  getAll(@Query('status') status?: string) {
-    return this.organizationsService.getAll(status);
+  getAll(@Req() req: Request, @Query('status') status?: string) {
+    return this.organizationsService.getAll(req['user'], status);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get(':id')
-  getOne(@Param('id', ParseIntPipe) id: number) {
-    return this.organizationsService.getOne(id);
+  getOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    return this.organizationsService.getOne(id, req['user']);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}` })

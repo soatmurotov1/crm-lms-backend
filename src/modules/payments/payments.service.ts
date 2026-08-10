@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
 import { orgFilter } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 import { Cron } from '@nestjs/schedule';
 import { PaymentMethod, PaymentStatus, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -19,7 +20,38 @@ import { PaymeState } from './payme/payme.types';
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
+
+  /**
+   * To'lov so'rov egasining tashkilotidami.
+   *
+   * To'lov guruhga bog'langan, tashkilot esa guruh orqali aniqlanadi.
+   * Bu yerda faqat tashkilot tekshiriladi (o'qituvchi egaligi emas): to'lov
+   * xodimlarning ishi va u guruh biriktirilishiga bog'liq emas.
+   */
+  private async assertPaymentInOrg(user: RequestUser, paymentId: number) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      select: {
+        id: true,
+        groupId: true,
+        status: true,
+        method: true,
+        paidAt: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException("To'lov topilmadi");
+    }
+
+    await this.orgAccess.assertGroupInOrg(user, payment.groupId);
+
+    return payment;
+  }
 
   private paymeMerchantId = process.env.PAYME_MERCHANT_ID || '';
   private paymeCheckoutUrl = process.env.PAYME_CHECKOUT_URL || '';
@@ -288,9 +320,12 @@ export class PaymentsService {
     year?: number,
     month?: number,
   ) {
-    if (currentUser?.role === Role.STUDENT && currentUser.id !== studentId) {
-      throw new ForbiddenException("Bu sizning to'lovlaringiz emas");
-    }
+    /*
+      O'quvchining o'zi faqat o'zinikini ko'radi; o'qituvchi esa faqat o'z
+      guruhidagilarni. Ilgari ikkinchi shart yo'q edi — markazdagi har qanday
+      o'qituvchi istalgan o'quvchining to'lov tarixini ochib ko'ra olardi.
+    */
+    await this.orgAccess.assertStudentAccess(currentUser, studentId);
 
     const { targetYear, targetMonth } = this.normalizeMonthYear(year, month);
 
@@ -346,8 +381,19 @@ export class PaymentsService {
     });
   }
 
-  async startStudentPayment(studentId: number, payload: StartPaymentDto) {
+  async startStudentPayment(
+    studentId: number,
+    payload: StartPaymentDto,
+    user: RequestUser,
+  ) {
     const { groupId, year, month } = payload;
+
+    /*
+      Guruh so'rov egasining tashkilotidami. Busiz boshqa markazning
+      o'quvchisi uchun to'lov yozuvi ochib, unga Payme havolasi yasash
+      mumkin edi.
+    */
+    await this.orgAccess.assertGroupInOrg(user, groupId);
 
     const studentGroup = await this.prisma.studentGroup.findFirst({
       where: {
@@ -414,19 +460,22 @@ export class PaymentsService {
     };
   }
 
-  async markPaymentPaid(paymentId: number, payload: MarkPaymentDto) {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new NotFoundException("To'lov topilmadi");
-    }
+  async markPaymentPaid(
+    paymentId: number,
+    payload: MarkPaymentDto,
+    user: RequestUser,
+  ) {
+    /*
+      Ilgari bu metod so'rov egasini umuman bilmasdi: rol tekshiruvidan
+      o'tgan har qanday admin begona `paymentId` yuborib, boshqa markazning
+      to'lovini "to'langan" qilib qo'yishi mumkin edi.
+    */
+    const payment = await this.assertPaymentInOrg(user, paymentId);
 
     // Idempotentlik: tugma ikki marta bosilsa yoki so'rov takrorlansa
     // `paidAt` qayta yozilmasin - aks holda to'lov sanasi surilib ketadi.
     if (payment.status === PaymentStatus.PAID) {
-      return payment;
+      return this.prisma.payment.findUnique({ where: { id: paymentId } });
     }
 
     const updated = await this.prisma.payment.update({
@@ -444,14 +493,9 @@ export class PaymentsService {
   async updatePaymentStatus(
     paymentId: number,
     payload: UpdatePaymentStatusDto,
+    user: RequestUser,
   ) {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    if (!payment) {
-      throw new NotFoundException("To'lov topilmadi");
-    }
+    const payment = await this.assertPaymentInOrg(user, paymentId);
 
     const nextStatus = payload.status;
 
@@ -498,5 +542,4 @@ export class PaymentsService {
       this.logger.log(`${count} ta tugallanmagan to'lov bekor qilindi`);
     }
   }
-
 }

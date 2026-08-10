@@ -4,11 +4,15 @@ import { Role, Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { orgFilter } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class LessonsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
   async getOneLessonByGroupIdAndLessonId(
     groupId: number,
@@ -55,10 +59,7 @@ export class LessonsService {
     };
   }
 
-  async getLessonsByGroupId(
-    groupId: number,
-    currentUser: RequestUser,
-  ) {
+  async getLessonsByGroupId(groupId: number, currentUser: RequestUser) {
     const existGroup = await this.prisma.group.findFirst({
       where: {
         id: groupId,
@@ -89,22 +90,13 @@ export class LessonsService {
     };
   }
 
-  async createLesson(
-    payload: CreateLessonDto,
-    currentUser: RequestUser,
-  ) {
+  async createLesson(payload: CreateLessonDto, currentUser: RequestUser) {
     const { lessonDate, ...lessonPayload } = payload;
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: lessonPayload.groupId,
-        status: Status.ACTIVE,
-        ...orgFilter(currentUser),
-      },
-    });
 
-    if (!existGroup) {
-      throw new NotFoundException('Group not found with this id');
-    }
+    // O'qituvchi faqat o'z guruhiga dars qo'sha oladi.
+    await this.orgAccess.assertGroupAccess(currentUser, lessonPayload.groupId, {
+      requireActive: true,
+    });
 
     const createdLesson = await this.prisma.lesson.create({
       data: {
@@ -134,13 +126,14 @@ export class LessonsService {
     payload: UpdateLessonDto,
     currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, status: Status.ACTIVE, ...orgFilter(currentUser) },
+    /*
+      Tashkilot tekshiruvi bor edi, lekin o'qituvchi cheklanmasdi: bitta
+      markazdagi har qanday o'qituvchi hamkasbining darsini tahrirlashi va
+      o'chirishi mumkin edi. `assertGroupAccess` shu bo'shliqni yopadi.
+    */
+    await this.orgAccess.assertGroupAccess(currentUser, groupId, {
+      requireActive: true,
     });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found with this id');
-    }
     const lesson = await this.prisma.lesson.findFirst({
       where: {
         id: lessonId,
@@ -168,13 +161,14 @@ export class LessonsService {
     lessonId: number,
     currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, status: Status.ACTIVE, ...orgFilter(currentUser) },
+    /*
+      Tashkilot tekshiruvi bor edi, lekin o'qituvchi cheklanmasdi: bitta
+      markazdagi har qanday o'qituvchi hamkasbining darsini tahrirlashi va
+      o'chirishi mumkin edi. `assertGroupAccess` shu bo'shliqni yopadi.
+    */
+    await this.orgAccess.assertGroupAccess(currentUser, groupId, {
+      requireActive: true,
     });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found with this id');
-    }
 
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId, groupId },

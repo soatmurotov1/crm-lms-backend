@@ -1,47 +1,36 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateHomeworkResultsDto } from './dto/create.results.dto';
 import { HomeworkStatus, Role } from '@prisma/client';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class HomeworkResultsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
-  private async assertTeacherOwnsHomework(
+  /**
+   * Ilgari bu tekshiruv o'qituvchi bo'lmagan hammani darrov o'tkazib
+   * yuborardi (`role !== TEACHER` bo'lsa `return`). Ya'ni boshqa
+   * tashkilotning admini begona `homeworkId` ga baho qo'ya olardi.
+   */
+  private async assertHomeworkAccess(
     homeworkId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    if (currentUser.role !== Role.TEACHER) return;
-
-    const homework = await this.prisma.homework.findUnique({
-      where: { id: homeworkId },
-      select: { teacherId: true, groupId: true },
-    });
-
-    if (!homework) {
-      throw new NotFoundException('Homework not found');
-    }
-
-    if (homework.teacherId === currentUser.id) return;
-
-    const homeworkGroup = await this.prisma.group.findUnique({
-      where: { id: homework.groupId },
-      select: { teacherId: true },
-    });
-
-    if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
-      throw new ForbiddenException('Bu sening homeworking emas');
-    }
+    return this.orgAccess.assertHomeworkAccess(currentUser, homeworkId);
   }
 
   async createHomeworkResult(
     payload: CreateHomeworkResultsDto,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
       where: {
@@ -53,7 +42,16 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    await this.assertTeacherOwnsHomework(payload.homeworkId, currentUser);
+    const homework = await this.assertHomeworkAccess(
+      payload.homeworkId,
+      currentUser,
+    );
+
+    // Baho qo'yilayotgan o'quvchi ham shu vazifaning guruhida bo'lishi kerak.
+    await this.orgAccess.assertStudentInGroup(
+      payload.studentId,
+      homework.groupId,
+    );
 
     const submittedResponse = await this.prisma.homeworkResponse.findFirst({
       where: {
@@ -128,7 +126,7 @@ export class HomeworkResultsService {
 
   async getHomeworkResultsByHomeworkId(
     homeworkId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
       where: {
@@ -140,7 +138,7 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    await this.assertTeacherOwnsHomework(homeworkId, currentUser);
+    await this.assertHomeworkAccess(homeworkId, currentUser);
 
     const homeworkResults = await this.prisma.homeworkResult.findMany({
       where: {
@@ -175,7 +173,7 @@ export class HomeworkResultsService {
 
   async updateHomeworkResult(
     payload: CreateHomeworkResultsDto & { id: number },
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
     const existHomeworkResult = await this.prisma.homeworkResult.findUnique({
       where: {
@@ -197,7 +195,7 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework not found');
     }
 
-    await this.assertTeacherOwnsHomework(payload.homeworkId, currentUser);
+    await this.assertHomeworkAccess(payload.homeworkId, currentUser);
 
     const submittedResponse = await this.prisma.homeworkResponse.findFirst({
       where: {

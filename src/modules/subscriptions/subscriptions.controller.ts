@@ -8,8 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
@@ -29,17 +31,21 @@ export class SubscriptionsController {
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get('all')
   getAll(
+    @Req() req: Request,
     @Query('status') status?: string,
     @Query('organizationId') organizationId?: string,
   ) {
     return this.subscriptionsService.getAll(
+      req['user'],
       status,
       organizationId ? Number(organizationId) : undefined,
     );
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
-  @Roles(Role.SUPERADMIN, Role.ADMIN)
+  // Butun platforma bo'yicha yig'indi (hamma markazning obunasi va summasi)
+  // — faqat platforma egasiga. Ilgari tashkilot admini ham ko'ra olardi.
+  @Roles(Role.SUPERADMIN)
   @Get('summary')
   getSummary() {
     return this.subscriptionsService.getSummary();

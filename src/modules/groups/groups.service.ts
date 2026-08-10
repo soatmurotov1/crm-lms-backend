@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,10 +13,14 @@ import {
   orgFilter,
   resolveOwnerOrganizationId,
 } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 
 @Injectable()
 export class GroupsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
   private resolveStatusFilter(statusFilter?: string): Status[] {
     const normalized = String(statusFilter || 'ACTIVE')
@@ -41,17 +44,12 @@ export class GroupsService {
 
   async getAllStudentGroupById(groupId: number, currentUser: RequestUser) {
     /*
-      Guruh so'rov egasining tashkilotidami — bu tekshiruvsiz boshqa
-      tashkilotning `groupId` si bilan uning o'quvchilari ro'yxati ochilardi.
+      Guruh so'rov egasiga tegishlimi. Tashkilot tekshiruvi bor edi, lekin
+      undan keyingi savol qolib ketgandi: tashkilot ichidagi har qanday
+      o'qituvchi (va har qanday o'quvchi) begona guruhning ro'yxatini
+      ochib ko'ra olardi.
     */
-    const existGroup = await this.prisma.group.findFirst({
-      where: { id: groupId, ...orgFilter(currentUser) },
-      select: { id: true },
-    });
-
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
+    await this.orgAccess.assertGroupAccess(currentUser, groupId);
 
     const groups = await this.prisma.studentGroup.findMany({
       where: {
@@ -83,37 +81,7 @@ export class GroupsService {
   }
 
   async getGroupLessons(groupId: number, currentUser: RequestUser) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: groupId,
-        status: 'ACTIVE',
-        ...orgFilter(currentUser),
-      },
-    });
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role == Role.TEACHER &&
-      existGroup.teacherId != currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
-
-    if (currentUser.role === Role.STUDENT) {
-      const studentInGroup = await this.prisma.studentGroup.findFirst({
-        where: {
-          groupId,
-          studentId: currentUser.id,
-          status: Status.ACTIVE,
-        },
-      });
-
-      if (!studentInGroup) {
-        throw new ForbiddenException('Bu sening guruhing emas');
-      }
-    }
+    await this.orgAccess.assertGroupAccess(currentUser, groupId);
 
     const lessons = await this.prisma.lesson.findMany({
       where: {
@@ -335,22 +303,7 @@ export class GroupsService {
     payload: UpdateGroupDto,
     currentUser: RequestUser,
   ) {
-    const existGroup = await this.prisma.group.findFirst({
-      where: {
-        id: groupId,
-        ...orgFilter(currentUser),
-      },
-    });
-    if (!existGroup) {
-      throw new NotFoundException('Group not found');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existGroup.teacherId != currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sening guruhing emas');
-    }
+    await this.orgAccess.assertGroupAccess(currentUser, groupId);
 
     const data: any = {};
 

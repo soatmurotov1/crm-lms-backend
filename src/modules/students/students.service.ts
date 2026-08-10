@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { HomeworkStatus, Prisma } from '@prisma/client';
+import { HomeworkStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateStudentDto } from './dto/create.students.dto';
@@ -223,9 +223,8 @@ export class StudentsService {
     });
 
     // SMS ketmasa ham student yaratilgan bo'ladi.
-    const smsSent = await this.verificationService.sendCodeQuietly(
-      normalizedPhone,
-    );
+    const smsSent =
+      await this.verificationService.sendCodeQuietly(normalizedPhone);
 
     return {
       success: true,
@@ -247,7 +246,7 @@ export class StudentsService {
 
     if (existing) {
       throw new ConflictException(
-        'Bu telefon raqami allaqachon ro\'yxatdan o\'tgan. Boshqa raqam kiriting',
+        "Bu telefon raqami allaqachon ro'yxatdan o'tgan. Boshqa raqam kiriting",
       );
     }
   }
@@ -385,16 +384,32 @@ export class StudentsService {
     };
   }
 
-  async deleteStudentById(studentId: number, currentUser: { id: number }) {
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+  async deleteStudentById(studentId: number, currentUser: RequestUser) {
+    /*
+      Ilgari bu yerda tashkilot tekshiruvi yo'q edi: bitta markaz admini
+      begona `studentId` yuborib, boshqa markazning o'quvchisini butunlay
+      o'chirib tashlashi mumkin edi.
+    */
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, ...orgFilter(currentUser) },
+      select: { id: true },
     });
+
     if (!student) {
       throw new NotFoundException('Student not found');
     }
-    if (student.id === currentUser.id) {
+
+    /*
+      "O'z hisobini o'chira olmaydi" tekshiruvi faqat so'rovchining o'zi
+      o'quvchi bo'lganda ma'noga ega. Student va User jadvallarining ID
+      hisoblagichi alohida, shuning uchun rolni hisobga olmagan solishtiruv
+      admin ID si o'quvchi ID siga tasodifan teng kelganda butunlay boshqa
+      odamni himoya qilib qolardi.
+    */
+    if (currentUser.role === Role.STUDENT && student.id === currentUser.id) {
       throw new ForbiddenException("You can't delete your own account");
     }
+
     await this.prisma.student.delete({
       where: { id: studentId },
     });

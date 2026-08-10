@@ -33,6 +33,7 @@ import {
 } from 'src/common/guard/current-user.decorator';
 import { Role } from '@prisma/client';
 import { CreateUserDto } from './dto/create.users.dto';
+import { ChangeUserPasswordDto } from './dto/change-user-password.dto';
 
 @Controller('users')
 @ApiBearerAuth()
@@ -83,6 +84,23 @@ export class UsersController {
     @Query() query: PaginationQueryDto,
   ) {
     return this.userService.getAllUsers(user, query);
+  }
+
+  /**
+   * Har bir xodim o'z parolini almashtiradi — sozlamalardagi "Parolni
+   * o'zgartirish" shu yerga uradi. `:id` marshrutlaridan oldin turishi shart.
+   */
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({
+    summary: `${Role.SUPERADMIN}, ${Role.ADMIN}, ${Role.MANAGEMENT}, ${Role.ADMINSTRATOR}`,
+  })
+  @Put('my/password')
+  changeMyPassword(
+    @CurrentUser() user: RequestUser,
+    @Body() payload: ChangeUserPasswordDto,
+  ) {
+    return this.userService.changeMyPassword(user, payload);
   }
 
   @UseGuards(AuthGuard, RolesGuard)

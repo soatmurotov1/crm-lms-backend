@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { SessionModule } from './common/session/session.module';
 import { OrgAccessModule } from './common/utils/org-access.module';
 import { SmsModule } from './common/sms/sms.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -49,6 +50,7 @@ import { ExamsModule } from './modules/exams/exams.module';
     ]),
     ScheduleModule.forRoot(),
     PrismaModule,
+    SessionModule,
     OrgAccessModule,
     SmsModule,
     AuthModule,

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
+import { isSuperAdmin } from 'src/common/utils/org-scope.util';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 
@@ -8,13 +10,31 @@ import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 export class SubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
-  async getAll(status?: string, organizationId?: number) {
+  /**
+   * Obunalar ro'yxati.
+   *
+   * Tashkilot admini faqat o'zining obunasini ko'radi. Ilgari `organizationId`
+   * shunchaki ixtiyoriy filtr edi: uni yubormasa, har qanday markaz admini
+   * butun platformaning obunalarini — markaz nomi va tarif narxi bilan —
+   * ko'rib chiqa olardi.
+   */
+  async getAll(
+    currentUser: RequestUser,
+    status?: string,
+    organizationId?: number,
+  ) {
+    const scope = isSuperAdmin(currentUser)
+      ? organizationId
+        ? { organizationId }
+        : {}
+      : { organizationId: currentUser?.organizationId ?? -1 };
+
     const subscriptions = await this.prisma.subscription.findMany({
       where: {
         ...(status && status !== 'ALL'
           ? { status: status as SubscriptionStatus }
           : {}),
-        ...(organizationId ? { organizationId } : {}),
+        ...scope,
       },
       include: {
         organization: { select: { id: true, name: true, status: true } },

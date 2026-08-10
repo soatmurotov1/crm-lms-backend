@@ -53,8 +53,8 @@ export class SupportController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(...STAFF_ROLES)
   @Get('summary')
-  getSummary() {
-    return this.supportService.getSummary();
+  getSummary(@Req() req: Request) {
+    return this.supportService.getSummary(req['user']);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
@@ -88,8 +88,9 @@ export class SupportController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateTicketDto,
+    @Req() req: Request,
   ) {
-    return this.supportService.update(id, payload);
+    return this.supportService.update(id, payload, req['user']);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}` })

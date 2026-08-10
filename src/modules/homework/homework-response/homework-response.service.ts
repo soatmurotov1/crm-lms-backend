@@ -1,16 +1,16 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
 import {
   CloudinaryService,
   DOCUMENT_MIME_TYPES,
 } from 'src/common/cloudinary/cloudinary.service';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateHomeworkResponseDto } from './dto/create.response.dto';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
+import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 @Injectable()
 export class HomeworkResponseService {
@@ -20,6 +20,7 @@ export class HomeworkResponseService {
   constructor(
     private prisma: PrismaService,
     private cloudinary: CloudinaryService,
+    private orgAccess: OrgAccessService,
   ) {}
 
   async getMyHomeworkResponse(homeworkId: number, currentUser: { id: number }) {
@@ -66,40 +67,20 @@ export class HomeworkResponseService {
   async getStudentHomeworkResponse(
     homeworkId: number,
     studentId: number,
-    currentUser: { id: number; role: Role },
+    currentUser: RequestUser,
   ) {
-    const existHomework = await this.prisma.homework.findUnique({
-      where: {
-        id: homeworkId,
-      },
-      select: {
-        id: true,
-        teacherId: true,
-        groupId: true,
-      },
-    });
+    /*
+      Ikki savol ham berilishi kerak: vazifa so'rov egasiga tegishlimi VA
+      o'sha o'quvchi ham unga tegishlimi. Ilgari faqat birinchisi bor edi,
+      shuning uchun `studentId` ni almashtirib begona o'quvchining javobini
+      ochish mumkin edi.
+    */
+    const homework = await this.orgAccess.assertHomeworkAccess(
+      currentUser,
+      homeworkId,
+    );
 
-    if (!existHomework) {
-      throw new NotFoundException('Homework not found');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      existHomework.teacherId !== currentUser.id
-    ) {
-      const homeworkGroup = await this.prisma.group.findUnique({
-        where: {
-          id: existHomework.groupId,
-        },
-        select: {
-          teacherId: true,
-        },
-      });
-
-      if (!homeworkGroup || homeworkGroup.teacherId !== currentUser.id) {
-        throw new ForbiddenException('Bu sening homeworking emas');
-      }
-    }
+    await this.orgAccess.assertStudentInGroup(studentId, homework.groupId);
 
     const response = await this.prisma.homeworkResponse.findFirst({
       where: {
@@ -137,7 +118,7 @@ export class HomeworkResponseService {
 
   async createHomeworkResponse(
     payload: CreateHomeworkResponseDto,
-    currentUser: { id: number },
+    currentUser: RequestUser,
     file?: Express.Multer.File,
   ) {
     const existHomework = await this.prisma.homework.findUnique({
@@ -149,6 +130,10 @@ export class HomeworkResponseService {
     if (!existHomework) {
       throw new NotFoundException('Homework not found');
     }
+
+    // O'quvchi faqat o'z guruhining vazifasiga javob yubora oladi. Ilgari
+    // tekshiruv yo'q edi: istalgan `homeworkId` ga yozuv qo'shish mumkin edi.
+    await this.orgAccess.assertHomeworkAccess(currentUser, payload.homeworkId);
 
     const existingResponse = await this.prisma.homeworkResponse.findFirst({
       where: {
@@ -172,7 +157,11 @@ export class HomeworkResponseService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinary.uploadFile(
+        file,
+        'homework/responses',
+        DOCUMENT_MIME_TYPES,
+      );
     }
 
     await this.prisma.homeworkResponse.create({
@@ -228,7 +217,11 @@ export class HomeworkResponseService {
 
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinary.uploadFile(file, 'homework/responses', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinary.uploadFile(
+        file,
+        'homework/responses',
+        DOCUMENT_MIME_TYPES,
+      );
     }
 
     await this.prisma.homeworkResponse.update({

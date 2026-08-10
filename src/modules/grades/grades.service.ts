@@ -1,20 +1,19 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
-import { orgFilter } from 'src/common/utils/org-scope.util';
+import { OrgAccessService } from 'src/common/utils/org-access.service';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
 
 type CurrentUser = RequestUser;
 
 @Injectable()
 export class GradesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private orgAccess: OrgAccessService,
+  ) {}
 
   async getByGroup(groupId: number, currentUser: CurrentUser) {
     await this.ensureGroupAccess(groupId, currentUser);
@@ -32,9 +31,12 @@ export class GradesService {
   }
 
   async getByStudent(studentId: number, currentUser: CurrentUser) {
-    if (currentUser.role === Role.STUDENT && currentUser.id !== studentId) {
-      throw new ForbiddenException('Bu sizning baholaringiz emas');
-    }
+    /*
+      Ilgari faqat o'quvchining o'zi cheklanardi. O'qituvchi yoki boshqa
+      tashkilotning admini esa istalgan `studentId` ni yuborib, begona
+      o'quvchining butun baho tarixini ochib olardi.
+    */
+    await this.orgAccess.assertStudentAccess(currentUser, studentId);
 
     const grades = await this.prisma.grade.findMany({
       where: { studentId },
@@ -139,34 +141,10 @@ export class GradesService {
     };
   }
 
+  // Tekshiruv umumiy `OrgAccessService` da: uch modulda uch nusxada turgani
+  // uchun biri o'zgarganda qolganlari ortda qolib ketardi.
   private async ensureGroupAccess(groupId: number, currentUser: CurrentUser) {
-    // Guruh so'rov egasining tashkilotidami — begonasi "topilmadi" bo'ladi.
-    const group = await this.prisma.group.findFirst({
-      where: { id: groupId, ...orgFilter(currentUser) },
-      select: { id: true, teacherId: true },
-    });
-
-    if (!group) {
-      throw new NotFoundException('Guruh topilmadi');
-    }
-
-    if (
-      currentUser.role === Role.TEACHER &&
-      group.teacherId !== currentUser.id
-    ) {
-      throw new ForbiddenException('Bu sizning guruhingiz emas');
-    }
-
-    if (currentUser.role === Role.STUDENT) {
-      const membership = await this.prisma.studentGroup.findFirst({
-        where: { groupId, studentId: currentUser.id, status: 'ACTIVE' },
-        select: { id: true },
-      });
-
-      if (!membership) {
-        throw new ForbiddenException('Bu sizning guruhingiz emas');
-      }
-    }
+    await this.orgAccess.assertGroupAccess(currentUser, groupId);
   }
 
   private async ensureStudentInGroup(studentId: number, groupId: number) {
