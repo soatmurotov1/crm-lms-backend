@@ -7,6 +7,7 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { getClientIp } from '../utils/client-ip.util';
 
 const MAX_ATTEMPTS = 5;
@@ -45,12 +46,20 @@ export class LoginThrottleGuard implements CanActivate {
 
     if (skip) return true;
 
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<Request>();
     const now = Date.now();
 
     this.prune(now);
 
-    const key = `${getClientIp(req)}:${req.route?.path || req.url}`;
+    /*
+      Kalit yo'nalish bo'yicha ajratiladi: login uchun qo'yilgan cheklov SMS
+      yuborish cheklovini iste'mol qilmasligi kerak.
+
+      Express tiplarida `route` — `any` (u faqat router topilganda paydo
+      bo'ladi), shuning uchun uni kutilgan shaklga tor tip bilan o'qiymiz.
+    */
+    const route = req.route as { path?: string } | undefined;
+    const key = `${getClientIp(req)}:${route?.path ?? req.url}`;
     const entry = this.attempts.get(key);
 
     if (!entry || entry.resetAt <= now) {

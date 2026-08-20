@@ -36,7 +36,8 @@ export class SmsService {
 
     this.http = axios.create({
       baseURL:
-        this.config.get<string>('SMS_BASE_URL') ?? 'https://notify.eskiz.uz/api',
+        this.config.get<string>('SMS_BASE_URL') ??
+        'https://notify.eskiz.uz/api',
       timeout: 15_000,
     });
 
@@ -73,7 +74,7 @@ export class SmsService {
 
       const token = data?.data?.token;
       if (!token) {
-        throw new Error('Eskiz javobida token yo\'q');
+        throw new Error("Eskiz javobida token yo'q");
       }
 
       this.token = token;

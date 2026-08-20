@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { hashPassword } from '../bcrypt/bcrypt';
 import { Role } from '@prisma/client';
 import { normalizePhone } from '../utils/phone.util';
+import { isSchedulerProcess } from '../utils/scheduler.util';
 
 @Injectable()
 export class UserSeeder implements OnModuleInit {
@@ -22,6 +23,14 @@ export class UserSeeder implements OnModuleInit {
    * ishlayveradi va log'da aniq sabab turadi.
    */
   async onModuleInit() {
+    /*
+      Cluster'da barcha worker'lar bir vaqtda ko'tariladi. Ularning hammasi
+      seeding qilsa, `phone` unikal bo'lgani uchun bittasi yutadi, qolganlari
+      P2002 bilan yiqiladi va log'da asl muammo yo'q joyda "seeding
+      bajarilmadi" degan xato paydo bo'ladi. Bitta process yetarli.
+    */
+    if (!isSchedulerProcess()) return;
+
     try {
       await this.seedSuperAdmin();
     } catch (error) {

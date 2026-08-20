@@ -13,7 +13,7 @@ import { PaymeService } from './payme.service';
 import {
   PaymeError,
   PaymeErrorCode,
-  PaymeRequest,
+  type PaymeRequest,
   paymeMessage,
 } from './payme.types';
 

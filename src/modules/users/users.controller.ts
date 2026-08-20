@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -29,7 +28,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 import { Role } from '@prisma/client';
 import { CreateUserDto } from './dto/create.users.dto';
@@ -67,10 +66,10 @@ export class UsersController {
   @Post()
   createUser(
     @Body() payload: CreateUserDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.userService.createUser(payload, req['user'], file);
+    return this.userService.createUser(payload, user, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -145,17 +144,20 @@ export class UsersController {
   updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateUserDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.userService.updateUser(id, payload, req['user'], file);
+    return this.userService.updateUser(id, payload, user, file);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Delete(':id')
-  deleteUser(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.userService.deleteUser(id, req['user']);
+  deleteUser(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.userService.deleteUser(id, user);
   }
 }

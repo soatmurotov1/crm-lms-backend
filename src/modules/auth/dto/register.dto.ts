@@ -17,7 +17,7 @@ import {
 export class RegisterDto {
   @ApiProperty({ example: 'Aliyev Ali Valiyevich' })
   @IsString()
-  @MinLength(3, { message: 'FIO kamida 3 ta belgidan iborat bo\'lsin' })
+  @MinLength(3, { message: "FIO kamida 3 ta belgidan iborat bo'lsin" })
   fullName: string;
 
   @ApiProperty({ example: '+998901234567' })
@@ -31,10 +31,13 @@ export class RegisterDto {
 
   @ApiProperty({ example: 'parol123' })
   @IsString()
-  @MinLength(6, { message: 'Parol kamida 6 ta belgidan iborat bo\'lsin' })
+  @MinLength(6, { message: "Parol kamida 6 ta belgidan iborat bo'lsin" })
   password: string;
 
-  @ApiProperty({ example: '917810', description: 'SMS orqali kelgan 6 xonali kod' })
+  @ApiProperty({
+    example: '917810',
+    description: 'SMS orqali kelgan 6 xonali kod',
+  })
   @Transform(({ value }) => String(value ?? '').trim())
   @Length(6, 6, { message: "Tasdiqlash kodi 6 xonali bo'lishi kerak" })
   code: string;

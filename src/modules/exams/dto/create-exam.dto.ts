@@ -7,10 +7,11 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { trimString } from '../../../common/dto/transform.util';
 
 export class CreateExamDto {
   @ApiProperty({ example: 'Yakuniy imtihon' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   title: string;
@@ -38,7 +39,7 @@ export class CreateExamDto {
   endAt: string;
 
   @ApiProperty({ example: 'Imtihon haqida izoh', required: false })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trimString)
   @IsString()
   @IsOptional()
   description?: string;

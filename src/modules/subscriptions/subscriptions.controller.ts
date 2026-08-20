@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -20,6 +19,10 @@ import { Roles } from 'src/common/guard/decarator.roles';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('subscriptions')
 @ApiBearerAuth()
@@ -31,12 +34,12 @@ export class SubscriptionsController {
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get('all')
   getAll(
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @Query('status') status?: string,
     @Query('organizationId') organizationId?: string,
   ) {
     return this.subscriptionsService.getAll(
-      req['user'],
+      user,
       status,
       organizationId ? Number(organizationId) : undefined,
     );

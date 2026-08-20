@@ -185,17 +185,38 @@ export class HomeworkResultsService {
       throw new NotFoundException('Homework result not found');
     }
 
-    const existHomework = await this.prisma.homework.findUnique({
-      where: {
-        id: payload.homeworkId,
-      },
-    });
+    /*
+      Ruxsat tekshiruvi YANGILANAYOTGAN yozuv bo'yicha bo'lishi kerak.
 
-    if (!existHomework) {
-      throw new NotFoundException('Homework not found');
+      Ilgari bu yerda faqat `payload.homeworkId` tekshirilardi — ya'ni
+      so'rovda kelgan yangi qiymat. Natijada bir tashkilotning o'qituvchisi
+      `id` maydoniga BOSHQA tashkilotdagi natijaning raqamini, `homeworkId`
+      ga esa o'zining vazifasini yozib yuborishi mumkin edi: tekshiruv
+      o'zining vazifasidan o'tardi, `update` esa begona yozuvni o'zgartirib,
+      uni o'z guruhiga bog'lab qo'yardi.
+
+      Natijani boshqa vazifaga ko'chirish qonuniy amal ham emas, shuning
+      uchun `homeworkId` ning o'zgarishi ham taqiqlanadi.
+    */
+    if (existHomeworkResult.homeworkId !== payload.homeworkId) {
+      throw new BadRequestException(
+        'Natijani boshqa uy vazifasiga ko‘chirib bo‘lmaydi',
+      );
     }
 
-    await this.assertHomeworkAccess(payload.homeworkId, currentUser);
+    /*
+      Ruxsat tekshiruvi boshqa har qanday so'rovdan OLDIN turadi.
+
+      Bu yerda ilgari `homework.findUnique` chaqirilardi va vazifa topilmasa
+      "Homework not found" qaytarardi — ya'ni ruxsati yo'q odam ham begona
+      vazifa mavjudligini javob matni orqali bilib olardi. Tekshiruvning
+      o'zi (`assertHomeworkAccess`) vazifani baribir o'qiydi va topilmasa
+      xuddi shu xatoni beradi, shuning uchun alohida so'rov ortiqcha ham edi.
+    */
+    await this.assertHomeworkAccess(
+      existHomeworkResult.homeworkId,
+      currentUser,
+    );
 
     const submittedResponse = await this.prisma.homeworkResponse.findFirst({
       where: {

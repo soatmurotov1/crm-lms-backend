@@ -5,10 +5,8 @@ import {
   Body,
   Param,
   UseGuards,
-  Req,
   ParseIntPipe,
   Put,
-  Delete,
   Query,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
@@ -63,15 +61,21 @@ export class AttendanceController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @Post()
-  createAttendance(@Body() payload: CreateAttendanceDto, @Req() req: Request) {
-    return this.attendanceService.createAttendance(payload, req['user']);
+  createAttendance(
+    @Body() payload: CreateAttendanceDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.attendanceService.createAttendance(payload, user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER)
   @Put()
-  updateAttendance(@Body() payload: UpdateAttendanceDto, @Req() req: Request) {
-    return this.attendanceService.updateAttendance(payload, req['user']);
+  updateAttendance(
+    @Body() payload: UpdateAttendanceDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.attendanceService.updateAttendance(payload, user);
   }
 }

@@ -2,12 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { NotificationAudience, NotificationType, Role } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
-
-const emptyToUndefined = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-};
+import { emptyToUndefined } from '../../../common/dto/transform.util';
 
 export class CreateNotificationDto {
   @ApiProperty({ example: "To'lov eslatmasi" })

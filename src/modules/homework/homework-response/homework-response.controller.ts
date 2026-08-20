@@ -6,7 +6,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -25,6 +24,10 @@ import { Roles } from 'src/common/guard/decarator.roles';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CreateHomeworkResponseDto } from './dto/create.response.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('homework-response')
 @ApiBearerAuth()
@@ -39,12 +42,9 @@ export class HomeworkResponseController {
   @Get('mine/:homeworkId')
   getMyHomeworkResponse(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkResponseService.getMyHomeworkResponse(
-      homeworkId,
-      req['user'],
-    );
+    return this.homeworkResponseService.getMyHomeworkResponse(homeworkId, user);
   }
 
   @ApiOperation({
@@ -56,12 +56,12 @@ export class HomeworkResponseController {
   getStudentHomeworkResponse(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
     @Param('studentId', ParseIntPipe) studentId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.homeworkResponseService.getStudentHomeworkResponse(
       homeworkId,
       studentId,
-      req['user'],
+      user,
     );
   }
 
@@ -88,12 +88,12 @@ export class HomeworkResponseController {
   @Post()
   createHomeworkResponse(
     @Body() payload: CreateHomeworkResponseDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.homeworkResponseService.createHomeworkResponse(
       payload,
-      req['user'],
+      user,
       file,
     );
   }
@@ -121,12 +121,12 @@ export class HomeworkResponseController {
   @Put()
   updateHomeworkResponse(
     @Body() payload: CreateHomeworkResponseDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.homeworkResponseService.updateHomeworkResponse(
       payload,
-      req['user'],
+      user,
       file,
     );
   }

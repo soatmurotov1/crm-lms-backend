@@ -21,7 +21,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 
 @Controller('course')

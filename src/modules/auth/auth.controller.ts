@@ -11,7 +11,7 @@ import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { Request } from 'express';
+import type { Request } from 'express';
 import {
   LoginThrottleGuard,
   SkipLoginThrottle,

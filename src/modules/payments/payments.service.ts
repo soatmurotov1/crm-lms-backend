@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,12 +8,28 @@ import type { RequestUser } from 'src/common/guard/current-user.decorator';
 import { orgFilter } from 'src/common/utils/org-scope.util';
 import { OrgAccessService } from 'src/common/utils/org-access.service';
 import { Cron } from '@nestjs/schedule';
-import { PaymentMethod, PaymentStatus, Role } from '@prisma/client';
+import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { StartPaymentDto } from './dto/start-payment.dto';
 import { MarkPaymentDto } from './dto/mark-payment.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { PaymeState } from './payme/payme.types';
+
+/**
+ * Prisma `Decimal` ni `instanceof` bilan tekshirmaymiz: adapter almashganda
+ * (masalan `@prisma/adapter-pg`) qiymat boshqa Decimal implementatsiyasidan
+ * kelishi mumkin, lekin `toNumber()` shartnomasi bir xil qoladi.
+ */
+type DecimalLike = { toNumber: () => number };
+
+function isDecimalLike(value: unknown): value is DecimalLike {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'toNumber' in value &&
+    typeof (value as DecimalLike).toNumber === 'function'
+  );
+}
 
 @Injectable()
 export class PaymentsService {
@@ -56,12 +71,21 @@ export class PaymentsService {
   private paymeMerchantId = process.env.PAYME_MERCHANT_ID || '';
   private paymeCheckoutUrl = process.env.PAYME_CHECKOUT_URL || '';
 
-  private toAmount(value: unknown) {
-    if (value && typeof value === 'object' && 'toNumber' in value) {
-      // @ts-ignore - Prisma Decimal provides toNumber at runtime
+  /**
+   * Prisma `Decimal` ni oddiy songa aylantiradi.
+   *
+   * Ilgari bu yerda `@ts-ignore` turardi va funksiya "error" tipini
+   * qaytarardi. TypeScript uchun bu "tekshirishni to'xtat" degani: shu
+   * funksiya natijasidan keyingi butun pul arifmetikasi — kutilgan summa,
+   * to'langan, qarz, Payme uchun tiyinga o'tkazish — tipsiz qolgan edi.
+   * Endi qaytish tipi aniq `number`.
+   */
+  private toAmount(value: unknown): number {
+    if (isDecimalLike(value)) {
       return value.toNumber();
     }
-    return Number(value || 0);
+
+    return Number(value ?? 0);
   }
 
   private buildPaymeUrl(
@@ -306,7 +330,14 @@ export class PaymentsService {
         : items;
 
     return filtered.sort((a, b) => {
-      const order = { PENDING: 1, DEBT: 2, PAID: 3, CANCELED: 4 };
+      // `status` string bo'lgani uchun xarita ochiq indekslanadigan qilib
+      // e'lon qilinadi — aks holda noma'lum kalit "error" tip beradi.
+      const order: Record<string, number> = {
+        PENDING: 1,
+        DEBT: 2,
+        PAID: 3,
+        CANCELED: 4,
+      };
       const orderA = order[a.status] || 9;
       const orderB = order[b.status] || 9;
       if (orderA !== orderB) return orderA - orderB;

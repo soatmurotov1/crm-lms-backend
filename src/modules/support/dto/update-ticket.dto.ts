@@ -2,12 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { SupportPriority, SupportStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsOptional } from 'class-validator';
-
-const emptyToUndefined = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-};
+import { emptyToUndefined } from '../../../common/dto/transform.util';
 
 export class UpdateTicketDto {
   @ApiProperty({ required: false, enum: SupportStatus })

@@ -6,7 +6,6 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -26,6 +25,10 @@ import { CreateLessonVideosDto } from './dto/create.lesson-videos.dto';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('lesson-videos')
 @ApiBearerAuth()
@@ -43,12 +46,9 @@ export class LessonVideosController {
   @Get(':groupId')
   getLessonVideosByGroupId(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.lessonVideosService.getAllLessonVideosByGroup(
-      groupId,
-      req['user'],
-    );
+    return this.lessonVideosService.getAllLessonVideosByGroup(groupId, user);
   }
 
   @ApiOperation({
@@ -76,7 +76,7 @@ export class LessonVideosController {
   @Post()
   async createLessonVideo(
     @Body() payload: CreateLessonVideosDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
@@ -84,11 +84,7 @@ export class LessonVideosController {
       fileUrl = await this.cloudinaryService.uploadVideo(file);
     }
 
-    return this.lessonVideosService.createLessonVideo(
-      payload,
-      req['user'],
-      fileUrl,
-    );
+    return this.lessonVideosService.createLessonVideo(payload, user, fileUrl);
   }
 
   @ApiOperation({
@@ -99,8 +95,8 @@ export class LessonVideosController {
   @Delete(':id')
   deleteLessonVideo(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.lessonVideosService.deleteLessonVideo(id, req['user']);
+    return this.lessonVideosService.deleteLessonVideo(id, user);
   }
 }

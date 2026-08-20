@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -18,6 +17,10 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('notifications')
 @ApiBearerAuth()
@@ -35,9 +38,9 @@ export class NotificationsController {
     Role.STUDENT,
   )
   @Get('mine')
-  getMine(@Req() req: Request, @Query('limit') limit?: string) {
+  getMine(@CurrentUser() user: RequestUser, @Query('limit') limit?: string) {
     return this.notificationsService.getMine(
-      req['user'],
+      user,
       limit ? Number(limit) : undefined,
     );
   }
@@ -45,9 +48,9 @@ export class NotificationsController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @Get('all')
-  getAll(@Req() req: Request, @Query('limit') limit?: string) {
+  getAll(@CurrentUser() user: RequestUser, @Query('limit') limit?: string) {
     return this.notificationsService.getAll(
-      req['user'],
+      user,
       limit ? Number(limit) : undefined,
     );
   }
@@ -63,8 +66,11 @@ export class NotificationsController {
     Role.TEACHER,
   )
   @Post()
-  create(@Body() payload: CreateNotificationDto, @Req() req: Request) {
-    return this.notificationsService.create(payload, req['user']);
+  create(
+    @Body() payload: CreateNotificationDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.notificationsService.create(payload, user);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
@@ -77,8 +83,8 @@ export class NotificationsController {
     Role.STUDENT,
   )
   @Patch('read/all')
-  markAllAsRead(@Req() req: Request) {
-    return this.notificationsService.markAllAsRead(req['user']);
+  markAllAsRead(@CurrentUser() user: RequestUser) {
+    return this.notificationsService.markAllAsRead(user);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
@@ -91,14 +97,20 @@ export class NotificationsController {
     Role.STUDENT,
   )
   @Patch(':id/read')
-  markAsRead(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.notificationsService.markAsRead(id, req['user']);
+  markAsRead(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.notificationsService.markAsRead(id, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.notificationsService.remove(id, req['user']);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.notificationsService.remove(id, user);
   }
 }

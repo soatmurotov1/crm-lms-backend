@@ -60,9 +60,8 @@ export class TeachersService {
     });
 
     // SMS ketmasa ham o'qituvchi yaratilgan bo'ladi.
-    const smsSent = await this.verificationService.sendCodeQuietly(
-      normalizedPhone,
-    );
+    const smsSent =
+      await this.verificationService.sendCodeQuietly(normalizedPhone);
 
     return {
       success: true,

@@ -10,12 +10,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-
-const emptyToUndefined = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-};
+import { emptyToUndefined } from '../../../common/dto/transform.util';
 
 export class CreatePlanDto {
   @ApiProperty({ example: 'Standart' })

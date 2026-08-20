@@ -7,6 +7,7 @@ import {
   PHONE_FORMAT_MESSAGE,
   PHONE_REGEX,
 } from 'src/common/utils/phone.util';
+import { emptyToUndefined } from '../../../common/dto/transform.util';
 
 export class CreateStudentDto {
   @ApiProperty()
@@ -27,9 +28,7 @@ export class CreateStudentDto {
   birth_date: string;
 
   @ApiProperty({ required: false, enum: UserStatus })
-  @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value,
-  )
+  @Transform(emptyToUndefined)
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;

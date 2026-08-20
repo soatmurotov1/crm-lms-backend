@@ -42,7 +42,10 @@ export class UsersService {
     file?: Express.Multer.File,
   ) {
     // ADMIN o'zidan yuqori huquqli hisob ocha olmasligi kerak.
-    if (payload.role === Role.SUPERADMIN && currentUser.role !== Role.SUPERADMIN) {
+    if (
+      payload.role === Role.SUPERADMIN &&
+      currentUser.role !== Role.SUPERADMIN
+    ) {
       throw new ForbiddenException('SUPERADMIN hisobini yarata olmaysiz');
     }
 
@@ -77,9 +80,8 @@ export class UsersService {
 
     // SMS ketmasa ham foydalanuvchi yaratilgan bo'ladi, shuning uchun
     // xatolik butun so'rovni yiqitmasligi kerak.
-    const smsSent = await this.verificationService.sendCodeQuietly(
-      normalizedPhone,
-    );
+    const smsSent =
+      await this.verificationService.sendCodeQuietly(normalizedPhone);
 
     return {
       success: true,

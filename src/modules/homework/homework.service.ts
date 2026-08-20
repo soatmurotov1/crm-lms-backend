@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { HomeworkStatusDto } from './dto/homework.status.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
 import { OrgAccessService } from 'src/common/utils/org-access.service';
@@ -221,7 +222,7 @@ export class HomeworkService {
   }
 
   async createHomework(
-    payload: any,
+    payload: CreateHomeworkDto,
     currentUser: RequestUser,
     filename?: string,
   ) {

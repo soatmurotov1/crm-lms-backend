@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -30,7 +29,7 @@ import { CreateTeacherDto } from './dto/create.teachers.dto';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 import { UpdateTeachersDto } from './dto/update.teachers.dto';
 import { ChangeTeacherPasswordDto } from './dto/change-teacher-password.dto';
@@ -88,8 +87,8 @@ export class TeachersController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.TEACHER)
   @Get('my/profile')
-  getMyProfile(@Req() req: Request) {
-    return this.teachersService.getMyProfile(req['user']);
+  getMyProfile(@CurrentUser() user: RequestUser) {
+    return this.teachersService.getMyProfile(user);
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -162,9 +161,9 @@ export class TeachersController {
   @Roles(Role.TEACHER)
   @Put('my/password')
   changeMyPassword(
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @Body() payload: ChangeTeacherPasswordDto,
   ) {
-    return this.teachersService.changeMyPassword(req['user'], payload);
+    return this.teachersService.changeMyPassword(user, payload);
   }
 }

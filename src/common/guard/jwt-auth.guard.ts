@@ -11,6 +11,7 @@ import {
   SessionService,
   type SessionUserType,
 } from '../session/session.service';
+import type { AuthedRequest } from './current-user.decorator';
 
 type TokenPayload = {
   id: number;
@@ -30,7 +31,7 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest<AuthedRequest>();
     const [scheme, token] = (req.headers.authorization || '').split(' ');
 
     if (scheme !== 'Bearer' || !token) {
@@ -39,7 +40,9 @@ export class AuthGuard implements CanActivate {
 
     let payload: TokenPayload;
     try {
-      payload = await this.jwtService.verify(token);
+      // `verify` `any` qaytaradi — imzo to'g'ri bo'lsa ham ichidagi
+      // maydonlar tekshirilmagan, shuning uchun tipni ochiq belgilaymiz.
+      payload = await this.jwtService.verifyAsync<TokenPayload>(token);
     } catch {
       throw new UnauthorizedException();
     }

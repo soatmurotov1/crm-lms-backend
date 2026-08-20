@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role, Status, UserStatus } from '@prisma/client';
+import { Prisma, Role, Status, UserStatus } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
@@ -305,7 +305,15 @@ export class GroupsService {
   ) {
     await this.orgAccess.assertGroupAccess(currentUser, groupId);
 
-    const data: any = {};
+    /*
+      Faqat kelgan maydonlar yangilanadi. Tip `any` emas, `Prisma`
+      niki: aks holda bu yerda yozilgan har bir maydon nomi va qiymati
+      tekshiruvsiz o'tib ketadi va sxemada yo'q maydonni yozib yuborish
+      faqat ish vaqtida bilinadi.
+    */
+    // `Unchecked` variant — bog'lanishlar `teacher: { connect: ... }`
+    // ko'rinishida emas, to'g'ridan-to'g'ri `teacherId` bilan beriladi.
+    const data: Prisma.GroupUncheckedUpdateInput = {};
 
     if (payload.teacherId !== undefined)
       data.teacherId = Number(payload.teacherId);

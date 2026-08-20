@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { trimString } from '../../../common/dto/transform.util';
 
 export class ExamResponseDto {
   @ApiProperty({ example: 1 })
@@ -10,13 +11,13 @@ export class ExamResponseDto {
   examId: number;
 
   @ApiProperty({ example: 'Javobim ilova qilindi', required: false })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trimString)
   @IsString()
   @IsOptional()
   comment?: string;
 
   @ApiProperty({ example: 'Sarlavha', required: false })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trimString)
   @IsString()
   @IsOptional()
   title?: string;

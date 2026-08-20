@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Put,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -33,6 +32,10 @@ import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamResponseDto } from './dto/exam-response.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 const examFileInterceptor = FileInterceptor('file', {
   storage: memoryStorage(),
@@ -84,9 +87,9 @@ export class ExamsController {
   @Get('group/:groupId')
   getExamsByGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.examsService.getExamsByGroup(groupId, req['user']);
+    return this.examsService.getExamsByGroup(groupId, user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -95,9 +98,9 @@ export class ExamsController {
   @Get('response/mine/:examId')
   getMyResponse(
     @Param('examId', ParseIntPipe) examId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.examsService.getMyResponse(examId, req['user']);
+    return this.examsService.getMyResponse(examId, user);
   }
 
   @ApiOperation({
@@ -109,9 +112,9 @@ export class ExamsController {
   getStudentResponse(
     @Param('examId', ParseIntPipe) examId: number,
     @Param('studentId', ParseIntPipe) studentId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.examsService.getStudentResponse(examId, studentId, req['user']);
+    return this.examsService.getStudentResponse(examId, studentId, user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -123,10 +126,10 @@ export class ExamsController {
   @Post('response')
   createResponse(
     @Body() payload: ExamResponseDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.examsService.createResponse(payload, req['user'], file);
+    return this.examsService.createResponse(payload, user, file);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -138,10 +141,10 @@ export class ExamsController {
   @Put('response')
   updateResponse(
     @Body() payload: ExamResponseDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.examsService.updateResponse(payload, req['user'], file);
+    return this.examsService.updateResponse(payload, user, file);
   }
 
   @ApiOperation({
@@ -155,14 +158,18 @@ export class ExamsController {
   @Post()
   async createExam(
     @Body() payload: CreateExamDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'exams',
+        DOCUMENT_MIME_TYPES,
+      );
     }
-    return this.examsService.createExam(payload, req['user'], fileUrl);
+    return this.examsService.createExam(payload, user, fileUrl);
   }
 
   @ApiOperation({
@@ -177,14 +184,18 @@ export class ExamsController {
   async updateExam(
     @Param('examId', ParseIntPipe) examId: number,
     @Body() payload: UpdateExamDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
     if (file) {
-      fileUrl = await this.cloudinaryService.uploadFile(file, 'exams', DOCUMENT_MIME_TYPES);
+      fileUrl = await this.cloudinaryService.uploadFile(
+        file,
+        'exams',
+        DOCUMENT_MIME_TYPES,
+      );
     }
-    return this.examsService.updateExam(examId, payload, req['user'], fileUrl);
+    return this.examsService.updateExam(examId, payload, user, fileUrl);
   }
 
   @ApiOperation({
@@ -195,9 +206,9 @@ export class ExamsController {
   @Delete(':examId')
   deleteExam(
     @Param('examId', ParseIntPipe) examId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.examsService.deleteExam(examId, req['user']);
+    return this.examsService.deleteExam(examId, user);
   }
 
   @ApiOperation({
@@ -208,8 +219,8 @@ export class ExamsController {
   @Get(':examId')
   getExamById(
     @Param('examId', ParseIntPipe) examId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.examsService.getExamById(examId, req['user']);
+    return this.examsService.getExamById(examId, user);
   }
 }

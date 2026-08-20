@@ -9,43 +9,10 @@ import {
   IsOptional,
 } from 'class-validator';
 import { Status, WeekDays } from '@prisma/client';
-
-const emptyToUndefined = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-};
-
-const toWeekDaysArray = ({ value }: { value: unknown }) => {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch {}
-    }
-
-    if (trimmed.includes(',')) {
-      return trimmed
-        .split(',')
-        .map((day) => day.trim())
-        .filter(Boolean);
-    }
-    return [trimmed];
-  }
-  return value;
-};
+import {
+  emptyToUndefined,
+  toWeekDaysArray,
+} from '../../../common/dto/transform.util';
 
 export class UpdateGroupDto {
   @ApiProperty({ example: 1 })

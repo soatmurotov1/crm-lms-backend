@@ -8,14 +8,20 @@ import {
 } from 'src/common/utils/phone.util';
 
 export class RequestPhoneChangeDto {
-  @ApiProperty({ example: '+998907654321', description: 'Yangi telefon raqami' })
+  @ApiProperty({
+    example: '+998907654321',
+    description: 'Yangi telefon raqami',
+  })
   @Transform(({ value }) => normalizePhone(value))
   @Matches(PHONE_REGEX, { message: PHONE_FORMAT_MESSAGE })
   newPhone: string;
 }
 
 export class ConfirmPhoneChangeDto {
-  @ApiProperty({ example: '+998907654321', description: 'Yangi telefon raqami' })
+  @ApiProperty({
+    example: '+998907654321',
+    description: 'Yangi telefon raqami',
+  })
   @Transform(({ value }) => normalizePhone(value))
   @Matches(PHONE_REGEX, { message: PHONE_FORMAT_MESSAGE })
   newPhone: string;

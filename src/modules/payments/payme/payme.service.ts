@@ -154,7 +154,7 @@ export class PaymeService {
   // ---------------------------------------------------- CreateTransaction
 
   async createTransaction(params: Record<string, unknown>) {
-    const paycomId = String(params?.id ?? '');
+    const paycomId = typeof params?.id === 'string' ? params.id : '';
 
     if (!paycomId) {
       throw new PaymeError(
@@ -454,7 +454,7 @@ export class PaymeService {
   // ------------------------------------------------------------- helpers
 
   private async findTransaction(params: Record<string, unknown>) {
-    const paycomId = String(params?.id ?? '');
+    const paycomId = typeof params?.id === 'string' ? params.id : '';
 
     const transaction = paycomId
       ? await this.prisma.paymeTransaction.findUnique({ where: { paycomId } })

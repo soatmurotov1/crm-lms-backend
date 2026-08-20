@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -30,7 +29,7 @@ import { CreateStudentDto } from './dto/create.students.dto';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 import { UpdateStudentDto } from './dto/update.students.dto';
 import { ChangeStudentPasswordDto } from './dto/change-student-password.dto';
@@ -44,8 +43,8 @@ export class StudentsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.STUDENT)
   @Get('my/groups')
-  GetMyGroups(@Req() req: Request) {
-    return this.studentsService.getMyGroups(req['user']);
+  GetMyGroups(@CurrentUser() user: RequestUser) {
+    return this.studentsService.getMyGroups(user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -54,9 +53,9 @@ export class StudentsController {
   @Get('my/group/lessonVideo/:groupId')
   GetMyGroupLessonVideo(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentsService.getMyGroupLessonVideo(groupId, req['user']);
+    return this.studentsService.getMyGroupLessonVideo(groupId, user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -65,9 +64,9 @@ export class StudentsController {
   @Get('my/lessons/:groupId')
   GetMyLessons(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentsService.getMyLessons(groupId, req['user']);
+    return this.studentsService.getMyLessons(groupId, user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -77,13 +76,9 @@ export class StudentsController {
   GetMyGroupsHomework(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Query('lessonId', ParseIntPipe) lessonId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentsService.getMyGroupHomework(
-      groupId,
-      lessonId,
-      req['user'],
-    );
+    return this.studentsService.getMyGroupHomework(groupId, lessonId, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -182,8 +177,8 @@ export class StudentsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.STUDENT)
   @Get('my/profile')
-  getMyProfile(@Req() req: Request) {
-    return this.studentsService.getMyProfile(req['user']);
+  getMyProfile(@CurrentUser() user: RequestUser) {
+    return this.studentsService.getMyProfile(user);
   }
 
   @ApiOperation({ summary: `${Role.STUDENT}` })
@@ -191,10 +186,10 @@ export class StudentsController {
   @Roles(Role.STUDENT)
   @Put('my/password')
   changeMyPassword(
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @Body() payload: ChangeStudentPasswordDto,
   ) {
-    return this.studentsService.changeMyPassword(req['user'], payload);
+    return this.studentsService.changeMyPassword(user, payload);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
@@ -203,8 +198,8 @@ export class StudentsController {
   @Delete(':studentId')
   deleteStudentById(
     @Param('studentId', ParseIntPipe) studentId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentsService.deleteStudentById(studentId, req['user']);
+    return this.studentsService.deleteStudentById(studentId, user);
   }
 }

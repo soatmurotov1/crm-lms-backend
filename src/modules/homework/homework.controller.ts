@@ -5,7 +5,6 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  Req,
   Get,
   Param,
   Query,
@@ -34,6 +33,10 @@ import {
 } from 'src/common/cloudinary/cloudinary.service';
 import { HomeworkStatusDto } from './dto/homework.status.dto';
 import { UpdateHomeworkDto } from './dto/update-homework.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('homework')
 @ApiBearerAuth()
@@ -51,9 +54,9 @@ export class HomeworkController {
   @Get('group/:groupId')
   getAllHomeworkByGroup(
     @Param('groupId') groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkService.getAllHomeworkByGroup(groupId, req['user']);
+    return this.homeworkService.getAllHomeworkByGroup(groupId, user);
   }
 
   @ApiOperation({
@@ -70,9 +73,9 @@ export class HomeworkController {
   getHomeworkById(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
     @Query() query: HomeworkStatusDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkService.getHomeworkById(homeworkId, query, req['user']);
+    return this.homeworkService.getHomeworkById(homeworkId, query, user);
   }
 
   @ApiConsumes('multipart/form-data')
@@ -102,7 +105,7 @@ export class HomeworkController {
   @Post()
   async createHomework(
     @Body() payload: CreateHomeworkDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
@@ -113,7 +116,7 @@ export class HomeworkController {
         DOCUMENT_MIME_TYPES,
       );
     }
-    return this.homeworkService.createHomework(payload, req['user'], fileUrl);
+    return this.homeworkService.createHomework(payload, user, fileUrl);
   }
 
   @ApiConsumes('multipart/form-data')
@@ -144,7 +147,7 @@ export class HomeworkController {
   async updateHomework(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
     @Body() payload: UpdateHomeworkDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
@@ -158,7 +161,7 @@ export class HomeworkController {
     return this.homeworkService.updateHomework(
       homeworkId,
       payload,
-      req['user'],
+      user,
       fileUrl,
     );
   }
@@ -191,7 +194,7 @@ export class HomeworkController {
   async updateHomeworkByTeacher(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
     @Body() payload: UpdateHomeworkDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     let fileUrl: string | undefined;
@@ -205,7 +208,7 @@ export class HomeworkController {
     return this.homeworkService.updateHomeworkByTeacher(
       homeworkId,
       payload,
-      req['user'],
+      user,
       fileUrl,
     );
   }
@@ -218,8 +221,8 @@ export class HomeworkController {
   @Delete(':homeworkId')
   deleteHomework(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkService.deleteHomework(homeworkId, req['user']);
+    return this.homeworkService.deleteHomework(homeworkId, user);
   }
 }

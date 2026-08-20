@@ -27,6 +27,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SupportModule } from './modules/support/support.module';
 import { GradesModule } from './modules/grades/grades.module';
 import { ExamsModule } from './modules/exams/exams.module';
+import { isSchedulerProcess } from './common/utils/scheduler.util';
 
 @Module({
   imports: [
@@ -48,7 +49,17 @@ import { ExamsModule } from './modules/exams/exams.module';
       { name: 'short', ttl: 1000, limit: 30 },
       { name: 'medium', ttl: 60_000, limit: 300 },
     ]),
-    ScheduleModule.forRoot(),
+    /*
+      Cron faqat BITTA process'da ishlashi kerak. Cluster'da har bir worker
+      `ScheduleModule` ni yuklasa, to'lov holatini yangilaydigan 5 daqiqalik
+      job (payments.service.ts) va tokenlarni tozalaydigan kechki job
+      (session.service.ts) worker soniga karrali marta bajariladi.
+
+      `@Cron` dekoratori faqat metadata yozadi - uni ro'yxatga oladigan
+      explorer aynan shu modul ichida. Demak modulni yuklamaslikning o'zi
+      job'larni o'chirish uchun yetarli, servis kodiga tegmaymiz.
+    */
+    ...(isSchedulerProcess() ? [ScheduleModule.forRoot()] : []),
     PrismaModule,
     SessionModule,
     OrgAccessModule,

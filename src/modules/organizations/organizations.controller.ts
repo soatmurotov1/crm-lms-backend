@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -20,6 +19,10 @@ import { Roles } from 'src/common/guard/decarator.roles';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('organizations')
 @ApiBearerAuth()
@@ -30,15 +33,18 @@ export class OrganizationsController {
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get('all')
-  getAll(@Req() req: Request, @Query('status') status?: string) {
-    return this.organizationsService.getAll(req['user'], status);
+  getAll(@CurrentUser() user: RequestUser, @Query('status') status?: string) {
+    return this.organizationsService.getAll(user, status);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(Role.SUPERADMIN, Role.ADMIN)
   @Get(':id')
-  getOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.organizationsService.getOne(id, req['user']);
+  getOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.organizationsService.getOne(id, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}` })

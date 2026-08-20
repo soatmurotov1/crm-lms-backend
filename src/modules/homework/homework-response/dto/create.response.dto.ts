@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { trimString } from '../../../../common/dto/transform.util';
 
 export class CreateHomeworkResponseDto {
   @ApiProperty({ example: 'string' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trimString)
   @IsString()
   @IsNotEmpty()
   title: string;

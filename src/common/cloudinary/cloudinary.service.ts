@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
+import { getErrorMessage } from '../utils/error-message.util';
 
 /** Profil rasmlari uchun ruxsat etilgan turlar. */
 export const IMAGE_MIME_TYPES = new Set([
@@ -92,10 +93,12 @@ export class CloudinaryService {
             resource_type: resourceType,
             public_id: `${Date.now()}-${this.safePublicId(file.originalname)}`,
           },
-          (error, result: any) => {
+          (error, result?: UploadApiResponse) => {
             if (error) {
               reject(
-                new BadRequestException(`Upload failed: ${error.message}`),
+                new BadRequestException(
+                  `Upload failed: ${getErrorMessage(error)}`,
+                ),
               );
             } else if (result) {
               resolve(result.secure_url);
@@ -112,7 +115,9 @@ export class CloudinaryService {
     } catch (error) {
       // Validatsiya xatosi o'z matni bilan chiqsin, o'ralib ketmasin.
       if (error instanceof BadRequestException) throw error;
-      throw new BadRequestException(`File upload error: ${error.message}`);
+      throw new BadRequestException(
+        `File upload error: ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -128,7 +133,7 @@ export class CloudinaryService {
     try {
       await cloudinary.uploader.destroy(publicId);
     } catch (error) {
-      throw new BadRequestException(`Delete failed: ${error.message}`);
+      throw new BadRequestException(`Delete failed: ${getErrorMessage(error)}`);
     }
   }
 
@@ -136,7 +141,9 @@ export class CloudinaryService {
     try {
       await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
     } catch (error) {
-      throw new BadRequestException(`Video delete failed: ${error.message}`);
+      throw new BadRequestException(
+        `Video delete failed: ${getErrorMessage(error)}`,
+      );
     }
   }
 }

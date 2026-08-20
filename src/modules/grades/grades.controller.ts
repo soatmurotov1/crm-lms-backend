@@ -7,7 +7,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -18,6 +17,10 @@ import { Roles } from 'src/common/guard/decarator.roles';
 import { GradesService } from './grades.service';
 import { CreateGradeDto } from './dto/create-grade.dto';
 import { UpdateGradeDto } from './dto/update-grade.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 const STAFF_ROLES = [
   Role.SUPERADMIN,
@@ -36,8 +39,8 @@ export class GradesController {
   @ApiOperation({ summary: `${Role.STUDENT} — o'z baholari` })
   @Roles(Role.STUDENT)
   @Get('mine')
-  getMine(@Req() req: Request) {
-    return this.gradesService.getMine(req['user']);
+  getMine(@CurrentUser() user: RequestUser) {
+    return this.gradesService.getMine(user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
@@ -45,9 +48,9 @@ export class GradesController {
   @Get('group/:groupId')
   getByGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.gradesService.getByGroup(groupId, req['user']);
+    return this.gradesService.getByGroup(groupId, user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}, ${Role.STUDENT}` })
@@ -55,16 +58,16 @@ export class GradesController {
   @Get('student/:studentId')
   getByStudent(
     @Param('studentId', ParseIntPipe) studentId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.gradesService.getByStudent(studentId, req['user']);
+    return this.gradesService.getByStudent(studentId, user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
   @Roles(...STAFF_ROLES)
   @Post()
-  create(@Body() payload: CreateGradeDto, @Req() req: Request) {
-    return this.gradesService.create(payload, req['user']);
+  create(@Body() payload: CreateGradeDto, @CurrentUser() user: RequestUser) {
+    return this.gradesService.create(payload, user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
@@ -73,15 +76,18 @@ export class GradesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateGradeDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.gradesService.update(id, payload, req['user']);
+    return this.gradesService.update(id, payload, user);
   }
 
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.TEACHER}` })
   @Roles(...STAFF_ROLES)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.gradesService.remove(id, req['user']);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.gradesService.remove(id, user);
   }
 }

@@ -6,7 +6,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { HomeworkResultsService } from './homework-results.service';
@@ -16,6 +15,10 @@ import { Role } from '@prisma/client';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('homework-results')
 @ApiBearerAuth()
@@ -30,12 +33,9 @@ export class HomeworkResultsController {
   @Post()
   createHomeworkResult(
     @Body() payload: CreateHomeworkResultsDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkResultService.createHomeworkResult(
-      payload,
-      req['user'],
-    );
+    return this.homeworkResultService.createHomeworkResult(payload, user);
   }
 
   @ApiOperation({
@@ -46,11 +46,11 @@ export class HomeworkResultsController {
   @Get('homework/:homeworkId')
   getHomeworkResultByHomeworkId(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.homeworkResultService.getHomeworkResultsByHomeworkId(
       homeworkId,
-      req['user'],
+      user,
     );
   }
 
@@ -62,12 +62,9 @@ export class HomeworkResultsController {
   @Get('mine/:homeworkId')
   getMyHomeworkResult(
     @Param('homeworkId', ParseIntPipe) homeworkId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.homeworkResultService.getMyHomeworkResult(
-      homeworkId,
-      req['user'],
-    );
+    return this.homeworkResultService.getMyHomeworkResult(homeworkId, user);
   }
 
   @ApiOperation({
@@ -79,11 +76,11 @@ export class HomeworkResultsController {
   updateHomeworkResult(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: CreateHomeworkResultsDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.homeworkResultService.updateHomeworkResult(
       { ...payload, id },
-      req['user'],
+      user,
     );
   }
 }

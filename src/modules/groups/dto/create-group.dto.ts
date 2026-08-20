@@ -8,38 +8,7 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { Status, WeekDays } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
-
-const toWeekDaysArray = ({ value }: { value: unknown }) => {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return value;
-    }
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch {}
-    }
-
-    if (trimmed.includes(',')) {
-      return trimmed
-        .split(',')
-        .map((day) => day.trim())
-        .filter(Boolean);
-    }
-
-    return [trimmed];
-  }
-
-  return value;
-};
+import { toWeekDaysArray } from '../../../common/dto/transform.util';
 
 export class CreateGroupDto {
   @ApiProperty({ example: 1 })

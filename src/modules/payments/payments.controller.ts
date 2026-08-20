@@ -7,7 +7,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -21,7 +20,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 
 @Controller('payments')
@@ -85,13 +84,13 @@ export class PaymentsController {
   )
   getStudentMonthlyPayments(
     @Param('studentId', ParseIntPipe) studentId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
     @Query('year') year?: string,
     @Query('month') month?: string,
   ) {
     return this.paymentsService.getStudentMonthlyPayments(
       studentId,
-      req['user'],
+      user,
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
     );

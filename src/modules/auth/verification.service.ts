@@ -87,7 +87,9 @@ export class VerificationService {
 
     if (record.attempts >= MAX_ATTEMPTS) {
       await this.prisma.verificationCode.delete({ where: { id: record.id } });
-      throw new BadRequestException("Urinishlar soni tugadi, yangi kod so'rang");
+      throw new BadRequestException(
+        "Urinishlar soni tugadi, yangi kod so'rang",
+      );
     }
 
     if (record.code !== code) {
@@ -145,7 +147,9 @@ export class VerificationService {
 
     if (record.attempts >= MAX_ATTEMPTS) {
       await this.prisma.verificationCode.delete({ where: { id: record.id } });
-      throw new BadRequestException("Urinishlar soni tugadi, yangi kod so'rang");
+      throw new BadRequestException(
+        "Urinishlar soni tugadi, yangi kod so'rang",
+      );
     }
 
     if (record.code !== code) {

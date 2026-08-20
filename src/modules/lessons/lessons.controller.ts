@@ -7,7 +7,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { LessonsService } from './lessons.service';
@@ -18,6 +17,10 @@ import { Role } from '@prisma/client';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { Roles } from 'src/common/guard/decarator.roles';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('lessons')
 @ApiBearerAuth()
@@ -32,9 +35,9 @@ export class LessonsController {
   @Get('group/:groupId')
   getLessonsByGroupId(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.lessonServise.getLessonsByGroupId(groupId, req['user']);
+    return this.lessonServise.getLessonsByGroupId(groupId, user);
   }
 
   @ApiOperation({
@@ -46,12 +49,12 @@ export class LessonsController {
   getOneLessonByGroupIdAndLessonId(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Param('lessonId', ParseIntPipe) lessonId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.lessonServise.getOneLessonByGroupIdAndLessonId(
       groupId,
       lessonId,
-      req['user'],
+      user,
     );
   }
 
@@ -61,8 +64,11 @@ export class LessonsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPERADMIN', 'TEACHER')
   @Post()
-  createLesson(@Body() payload: CreateLessonDto, @Req() req: Request) {
-    return this.lessonServise.createLesson(payload, req['user']);
+  createLesson(
+    @Body() payload: CreateLessonDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.lessonServise.createLesson(payload, user);
   }
 
   @ApiOperation({
@@ -76,13 +82,13 @@ export class LessonsController {
     @Param('groupId', ParseIntPipe) groupId: number,
     @Param('lessonId', ParseIntPipe) lessonId: number,
     @Body() payload: UpdateLessonDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
     return this.lessonServise.updateLessonById(
       groupId,
       lessonId,
       payload,
-      req['user'],
+      user,
     );
   }
 
@@ -93,8 +99,8 @@ export class LessonsController {
   deleteLessonById(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Param('lessonId', ParseIntPipe) lessonId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.lessonServise.deleteLessonById(groupId, lessonId, req['user']);
+    return this.lessonServise.deleteLessonById(groupId, lessonId, user);
   }
 }

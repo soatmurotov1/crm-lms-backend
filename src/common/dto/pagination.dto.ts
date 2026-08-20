@@ -40,7 +40,9 @@ export class PaginationQueryDto {
   @Type(() => Number)
   @IsInt({ message: "Limit butun son bo'lishi kerak" })
   @Min(1, { message: "Limit 1 dan kichik bo'lmasligi kerak" })
-  @Max(MAX_PAGE_SIZE, { message: `Limit eng ko'pi ${MAX_PAGE_SIZE} bo'lishi mumkin` })
+  @Max(MAX_PAGE_SIZE, {
+    message: `Limit eng ko'pi ${MAX_PAGE_SIZE} bo'lishi mumkin`,
+  })
   limit?: number;
 }
 

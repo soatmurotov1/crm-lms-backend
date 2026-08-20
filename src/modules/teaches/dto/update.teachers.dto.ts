@@ -6,12 +6,7 @@ import {
   PHONE_FORMAT_MESSAGE,
   PHONE_REGEX,
 } from 'src/common/utils/phone.util';
-
-const emptyToUndefined = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? undefined : trimmed;
-};
+import { emptyToUndefined } from '../../../common/dto/transform.util';
 
 export class UpdateTeachersDto {
   @ApiProperty({ required: false })

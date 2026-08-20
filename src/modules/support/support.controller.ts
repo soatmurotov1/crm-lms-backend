@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -20,6 +19,10 @@ import { SupportService } from './support.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyTicketDto } from './dto/reply-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 const ALL_ROLES = [
   Role.SUPERADMIN,
@@ -46,29 +49,32 @@ export class SupportController {
   @ApiOperation({ summary: 'Barcha rollar (xodim bo‘lmasa — faqat o‘ziniki)' })
   @Roles(...ALL_ROLES)
   @Get('all')
-  getAll(@Req() req: Request, @Query('status') status?: string) {
-    return this.supportService.getAll(req['user'], status);
+  getAll(@CurrentUser() user: RequestUser, @Query('status') status?: string) {
+    return this.supportService.getAll(user, status);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
   @Roles(...STAFF_ROLES)
   @Get('summary')
-  getSummary(@Req() req: Request) {
-    return this.supportService.getSummary(req['user']);
+  getSummary(@CurrentUser() user: RequestUser) {
+    return this.supportService.getSummary(user);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
   @Roles(...ALL_ROLES)
   @Get(':id')
-  getOne(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
-    return this.supportService.getOne(id, req['user']);
+  getOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.supportService.getOne(id, user);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
   @Roles(...ALL_ROLES)
   @Post()
-  create(@Body() payload: CreateTicketDto, @Req() req: Request) {
-    return this.supportService.create(payload, req['user']);
+  create(@Body() payload: CreateTicketDto, @CurrentUser() user: RequestUser) {
+    return this.supportService.create(payload, user);
   }
 
   @ApiOperation({ summary: 'Barcha rollar' })
@@ -77,9 +83,9 @@ export class SupportController {
   reply(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: ReplyTicketDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.supportService.reply(id, payload, req['user']);
+    return this.supportService.reply(id, payload, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -88,9 +94,9 @@ export class SupportController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() payload: UpdateTicketDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.supportService.update(id, payload, req['user']);
+    return this.supportService.update(id, payload, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}` })

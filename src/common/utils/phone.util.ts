@@ -1,4 +1,3 @@
-
 /**
  * Telefon raqami login identifikatori bo'lgani uchun bazaga har doim bitta
  * ko'rinishda (`+998901234567`) yoziladi. Foydalanuvchi `+998 90 123-45-67`

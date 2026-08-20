@@ -19,7 +19,7 @@ import { Role } from '@prisma/client';
 import { Roles } from 'src/common/guard/decarator.roles';
 import {
   CurrentUser,
-  RequestUser,
+  type RequestUser,
 } from 'src/common/guard/current-user.decorator';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -44,10 +44,7 @@ export class RoomsController {
   @Roles(Role.ADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: `${Role.ADMIN}, ${Role.SUPERADMIN}` })
   @Post()
-  createRoom(
-    @CurrentUser() user: RequestUser,
-    @Body() payload: CreateRoomDto,
-  ) {
+  createRoom(@CurrentUser() user: RequestUser, @Body() payload: CreateRoomDto) {
     return this.roomService.createRoom(user, payload);
   }
 

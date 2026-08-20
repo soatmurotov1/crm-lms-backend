@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -26,6 +25,10 @@ import { Roles } from 'src/common/guard/decarator.roles';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('groups')
 @ApiBearerAuth()
@@ -40,9 +43,9 @@ export class GroupsController {
   @Get('students/:groupId')
   getAllStudentGroupById(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.groupService.getAllStudentGroupById(groupId, req['user']);
+    return this.groupService.getAllStudentGroupById(groupId, user);
   }
 
   @ApiOperation({
@@ -53,9 +56,9 @@ export class GroupsController {
   @Get('lesson/:groupId')
   getGroupLessons(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.groupService.getGroupLessons(groupId, req['user']);
+    return this.groupService.getGroupLessons(groupId, user);
   }
 
   @ApiOperation({
@@ -64,8 +67,11 @@ export class GroupsController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPERADMIN, Role.TEACHER, Role.STUDENT)
   @Get('all')
-  getAllGroup(@Req() req: Request, @Query('status') status?: string) {
-    return this.groupService.getAllGroup(req['user'], status);
+  getAllGroup(
+    @CurrentUser() user: RequestUser,
+    @Query('status') status?: string,
+  ) {
+    return this.groupService.getAllGroup(user, status);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -94,8 +100,11 @@ export class GroupsController {
   })
   @UseInterceptors(AnyFilesInterceptor())
   @Post()
-  createGroup(@Body() payload: CreateGroupDto, @Req() req: Request) {
-    return this.groupService.createGroup(payload, req['user']);
+  createGroup(
+    @Body() payload: CreateGroupDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.groupService.createGroup(payload, user);
   }
 
   @ApiOperation({
@@ -129,9 +138,9 @@ export class GroupsController {
   updateGroupById(
     @Param('groupId', ParseIntPipe) groupId: number,
     @Body() payload: UpdateGroupDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.groupService.updateGroupById(groupId, payload, req['user']);
+    return this.groupService.updateGroupById(groupId, payload, user);
   }
 
   @ApiOperation({
@@ -142,8 +151,8 @@ export class GroupsController {
   @Delete(':groupId')
   deleteGroupById(
     @Param('groupId', ParseIntPipe) groupId: number,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.groupService.deleteGroupById(groupId, req['user']);
+    return this.groupService.deleteGroupById(groupId, user);
   }
 }

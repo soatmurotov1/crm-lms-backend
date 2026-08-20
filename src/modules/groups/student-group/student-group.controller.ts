@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Post,
-  Put,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Roles } from 'src/common/guard/decarator.roles';
@@ -15,6 +6,10 @@ import { AuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { CreateStudentGroupDto } from './dto/create.student-group.dto';
 import { StudentGroupService } from './student-group.service';
+import {
+  CurrentUser,
+  type RequestUser,
+} from 'src/common/guard/current-user.decorator';
 
 @Controller('student-group')
 @ApiBearerAuth()
@@ -27,9 +22,9 @@ export class StudentGroupController {
   @Post()
   createStudentGroup(
     @Body() payload: CreateStudentGroupDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentGroupServise.createStudentGroup(payload, req['user']);
+    return this.studentGroupServise.createStudentGroup(payload, user);
   }
 
   @ApiOperation({ summary: `${Role.SUPERADMIN}, ${Role.ADMIN}` })
@@ -38,8 +33,8 @@ export class StudentGroupController {
   @Delete()
   deleteStudentGroup(
     @Body() payload: CreateStudentGroupDto,
-    @Req() req: Request,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.studentGroupServise.deleteStudentGroup(payload, req['user']);
+    return this.studentGroupServise.deleteStudentGroup(payload, user);
   }
 }
