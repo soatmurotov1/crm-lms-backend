@@ -78,7 +78,6 @@ enum SubscriptionStatus {
 }
 
 /// Xabarnoma kimga mo'ljallangani.
-///
 /// ORGANIZATION — aniq bir tashkilotga (o'sha tashkilotga biriktirilgan
 /// foydalanuvchilarga), USER — aniq bir shaxsga (admin / o'qituvchi / o'quvchi).
 enum NotificationAudience {
@@ -148,6 +147,8 @@ model User {
   exams           Exam[]
   examResults     ExamResult[]
   grades          Grade[]
+  leads           Lead[]
+  expenses        Expense[]
 
   @@index([organizationId])
 }
@@ -222,6 +223,7 @@ model Course {
   groups       Group[]
   payments     Payment[]
   exams        Exam[]
+  leads        Lead[]
 
   // Kurs nomi tashkilot ichida takrorlanmaydi; boshqa tashkilotda esa
   // xuddi shu nomdagi kurs bo'lishi mumkin.
@@ -631,6 +633,73 @@ model Organization {
   courses  Course[]
   rooms    Room[]
   groups   Group[]
+  leads    Lead[]
+  expenses Expense[]
+}
+
+/// Lid voronkasidagi bosqich. Tartib doskadagi ustunlar tartibiga mos.
+enum LeadStage {
+  NEW
+  CONTACTED
+  TRIAL
+  CONTRACT
+  WON
+  LOST
+}
+
+/// Bo'lajak o'quvchi: hali ro'yxatdan o'tmagan, lekin qiziqish bildirgan odam.
+model Lead {
+  id             Int       @id @default(autoincrement())
+  fullName       String
+  phone          String
+  source         String?
+  note           String?
+  stage          LeadStage @default(NEW)
+  courseId       Int?
+  assignedToId   Int?
+  /// Keyingi bog'lanish vaqti. O'tib ketgan bo'lsa lid "kechikkan" hisoblanadi.
+  nextContactAt  DateTime?
+  status         Status    @default(ACTIVE)
+  organizationId Int?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  assignedTo   User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, stage])
+  @@index([assignedToId])
+}
+
+enum ExpenseStatus {
+  PENDING
+  PAID
+}
+
+/// Markaz xarajati (ijara, oylik, kommunal va h.k.).
+model Expense {
+  id             Int           @id @default(autoincrement())
+  title          String
+  category       String
+  amount         Decimal
+  status         ExpenseStatus @default(PENDING)
+  /// To'lash muddati. PENDING holatda o'tib ketsa "muddati o'tgan" bo'ladi.
+  dueDate        DateTime?
+  paidAt         DateTime?
+  note           String?
+  createdById    Int?
+  /// O'chirilgan xarajat yo'qolmaydi — "O'chirilganlar tarixi"da ko'rinadi.
+  deleted_at     DateTime?
+  organizationId Int?
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, dueDate])
 }
 
 

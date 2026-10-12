@@ -27,6 +27,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SupportModule } from './modules/support/support.module';
 import { GradesModule } from './modules/grades/grades.module';
 import { ExamsModule } from './modules/exams/exams.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 import { isSchedulerProcess } from './common/utils/scheduler.util';
 
 @Module({
@@ -83,6 +85,8 @@ import { isSchedulerProcess } from './common/utils/scheduler.util';
     SupportModule,
     GradesModule,
     ExamsModule,
+    LeadsModule,
+    ExpensesModule,
   ],
   controllers: [],
   providers: [UserSeeder, { provide: APP_GUARD, useClass: ThrottlerGuard }],
