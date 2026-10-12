@@ -121,6 +121,12 @@ enum GradeType {
   OTHER
 }
 
+/// Kurs turi: namunadagi "Tezkor" va "Avto maktab" filtri.
+enum CourseType {
+  EXPRESS
+  AUTO_SCHOOL
+}
+
 model User {
   id             Int        @id @default(autoincrement())
   fullName       String
@@ -133,10 +139,12 @@ model User {
   address        String?
   status         UserStatus @default(ACTIVE)
   organizationId Int?
+  email          String?    @unique
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
 
   organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  managedBranches Branch[]
   groups          Group[]
   attendances     Attendance[]
   lessons         Lesson[]
@@ -190,10 +198,12 @@ model Student {
   birth_date     DateTime
   status         UserStatus @default(ACTIVE)
   organizationId Int?
+  branchId       Int?
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
 
   organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  branch            Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
   studentGroups     StudentGroup[]
   payments          Payment[]
   attendances       Attendance[]
@@ -204,6 +214,7 @@ model Student {
   grades            Grade[]
 
   @@index([organizationId])
+  @@index([branchId])
 }
 
 model Course {
@@ -213,6 +224,7 @@ model Course {
   durationLesson Int
   status         Status       @default(ACTIVE)
   level          CourseLevel?
+  type           CourseType   @default(AUTO_SCHOOL)
   price          Decimal
   description    String?
   organizationId Int?
@@ -247,7 +259,6 @@ model Room {
   @@index([organizationId])
 }
 
-
 model Group {
   id             Int        @id @default(autoincrement())
   teacherId      Int
@@ -260,10 +271,12 @@ model Group {
   weekDays       WeekDays[]
   status         Status     @default(ACTIVE)
   organizationId Int?
+  branchId       Int?
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
 
   organization  Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
   studentGroup  StudentGroup[]
   payments      Payment[]
   teacher       Teacher        @relation(fields: [teacherId], references: [id])
@@ -279,8 +292,8 @@ model Group {
   // tegishli, ya'ni bu cheklov tashkilotlar orasida to'qnashmaydi.
   @@unique([courseId, name])
   @@index([organizationId])
+  @@index([branchId])
 }
-
 
 model StudentGroup {
   id         Int      @id @default(autoincrement())
@@ -297,7 +310,6 @@ model StudentGroup {
 
   @@unique([groupId, studentId])
 }
-
 
 model Payment {
   id         Int            @id @default(autoincrement())
@@ -324,11 +336,9 @@ model Payment {
 
 /**
  * Payme Merchant API tranzaksiyasi.
- *
  * Payme bitta to'lov uchun bir necha marta so'rov yuborishi mumkin (tarmoq
  * uzilishi, qayta urinish). `paycomId` unique bo'lgani uchun takroriy so'rov
  * yangi yozuv yaratmaydi - shu orqali idempotentlik ta'minlanadi.
- *
  * Vaqtlar Payme talabiga ko'ra millisekundda (Unix epoch) saqlanadi.
  */
 model PaymeTransaction {
@@ -354,7 +364,6 @@ model PaymeTransaction {
   @@index([paycomTime])
   @@index([state])
 }
-
 
 model Lesson {
   id         Int      @id @default(autoincrement())
@@ -519,11 +528,9 @@ model VerificationCode {
 
 /**
  * Bitta qurilmadagi bitta sessiya.
- *
  * `sessionId` access token ichiga `sid` bo'lib yoziladi, shuning uchun bu
  * jadvaldagi qator o'chirilishi bilan o'sha access token ham darhol kuchini
  * yo'qotadi — muddati tugashini kutish shart emas.
- *
  * `token` — refresh tokenning ochiq matni emas, sha256 hash'i. Baza sizib
  * chiqsa ham undan ishlaydigan sessiya yasab bo'lmaydi.
  */
@@ -609,7 +616,6 @@ model ExamResult {
   @@unique([examId, studentId])
 }
 
-
 model Organization {
   id           Int      @id @default(autoincrement())
   name         String   @unique
@@ -635,6 +641,27 @@ model Organization {
   groups   Group[]
   leads    Lead[]
   expenses Expense[]
+  branches Branch[]
+}
+
+/// Tashkilot filiali. Guruh va oʻquvchi bitta filialga biriktiriladi.
+model Branch {
+  id             Int      @id @default(autoincrement())
+  name           String
+  address        String?
+  phone          String?
+  managerId      Int?
+  status         Status   @default(ACTIVE)
+  organizationId Int
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager      User?        @relation(fields: [managerId], references: [id], onDelete: SetNull)
+  groups       Group[]
+  students     Student[]
+
+  @@unique([organizationId, name])
 }
 
 /// Lid voronkasidagi bosqich. Tartib doskadagi ustunlar tartibiga mos.
@@ -702,7 +729,6 @@ model Expense {
   @@index([organizationId, dueDate])
 }
 
-
 model Plan {
   id            Int      @id @default(autoincrement())
   name          String   @unique
@@ -741,7 +767,6 @@ model Subscription {
   @@index([status, endDate])
 }
 
-
 model Notification {
   id             Int                  @id @default(autoincrement())
   title          String
@@ -768,7 +793,6 @@ model Notification {
   @@index([recipientRole, recipientId])
 }
 
-
 model NotificationRead {
   id             Int      @id @default(autoincrement())
   notificationId Int
@@ -780,7 +804,6 @@ model NotificationRead {
 
   @@unique([notificationId, recipientRole, recipientId])
 }
-
 
 model SupportTicket {
   id             Int             @id @default(autoincrement())
@@ -803,7 +826,6 @@ model SupportTicket {
   @@index([status, created_at])
 }
 
-
 model SupportMessage {
   id         Int      @id @default(autoincrement())
   ticketId   Int
@@ -815,7 +837,6 @@ model SupportMessage {
 
   ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
-
 
 model Grade {
   id         Int       @id @default(autoincrement())
