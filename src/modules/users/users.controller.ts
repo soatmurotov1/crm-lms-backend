@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -33,6 +34,7 @@ import {
 import { Role } from '@prisma/client';
 import { CreateUserDto } from './dto/create.users.dto';
 import { ChangeUserPasswordDto } from './dto/change-user-password.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Controller('users')
 @ApiBearerAuth()
@@ -83,6 +85,23 @@ export class UsersController {
     @Query() query: PaginationQueryDto,
   ) {
     return this.userService.getAllUsers(user, query);
+  }
+
+  /** `:id` marshrutlaridan oldin turishi shart. */
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: 'Kirgan xodimning profili' })
+  @Get('me')
+  getMe(@CurrentUser() user: RequestUser) {
+    return this.userService.getMe(user);
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN, Role.MANAGEMENT, Role.ADMINSTRATOR)
+  @ApiOperation({ summary: 'O‘z ismi va emailini yangilash' })
+  @Patch('me')
+  updateMe(@CurrentUser() user: RequestUser, @Body() payload: UpdateMeDto) {
+    return this.userService.updateMe(user, payload);
   }
 
   /**

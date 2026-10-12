@@ -8,7 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
-import { orgFilter } from 'src/common/utils/org-scope.util';
+import { isSuperAdmin, orgFilter } from 'src/common/utils/org-scope.util';
 import {
   addDays,
   daysBetween,
@@ -50,6 +50,33 @@ export class DashboardService {
       throw new BadRequestException(
         `Sana oralig'i ${MAX_RANGE_DAYS} kundan oshmasligi kerak`,
       );
+    }
+
+    /*
+      Tashkilotga biriktirilmagan xodim hech narsa ko'rmaydi. `orgFilter`
+      bunday hisob uchun `{ organizationId: null }` qaytaradi — bu filtr
+      tashkilotsiz yozuvlarning HAMMASIGA mos keladi, ya'ni boshqa
+      tashkilotsiz hisoblarning tushumi va qarzdorlari ochilib qolardi.
+    */
+    if (!isSuperAdmin(user) && !user.organizationId) {
+      return {
+        success: true as const,
+        data: {
+          generatedAt: now.toISOString(),
+          todayRevenue: 0,
+          totalDebt: 0,
+          debtorCount: 0,
+          activeStudents: 0,
+          newStudentsInRange: 0,
+          debtQueue: [],
+          today: {
+            scheduledLessons: 0,
+            pendingAttendanceLessons: 0,
+            attendance: { present: 0, absent: 0, late: 0, excused: 0 },
+          },
+          revenueTrend: [],
+        },
+      };
     }
 
     // Oxirgi kun to'liq kirishi uchun yuqori chegara — keyingi kun boshi.

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { HomeworkStatus, Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import { StudentQueryDto } from './dto/student-query.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateStudentDto } from './dto/create.students.dto';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
@@ -20,7 +21,6 @@ import {
   orgFilter,
   resolveOwnerOrganizationId,
 } from 'src/common/utils/org-scope.util';
-import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
 import {
   buildPaginatedResult,
   resolvePagination,
@@ -263,10 +263,23 @@ export class StudentsService {
     }
   }
 
-  async getAllStudents(user: RequestUser, query?: PaginationQueryDto) {
+  async getAllStudents(user: RequestUser, query?: StudentQueryDto) {
     const { take, skip } = resolvePagination(query);
+    const search = query?.search;
+
     // Har bir tashkilot faqat o'z o'quvchilarini ko'radi.
-    const where = orgFilter(user);
+    const where: Prisma.StudentWhereInput = {
+      ...orgFilter(user),
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search, mode: 'insensitive' } },
+              // Raqam bazada `+998901234567` ko'rinishida turadi.
+              { phone: { contains: search.replace(/[\s()-]/g, '') } },
+            ],
+          }
+        : {}),
+    };
 
     const [students, total] = await this.prisma.$transaction([
       this.prisma.student.findMany({

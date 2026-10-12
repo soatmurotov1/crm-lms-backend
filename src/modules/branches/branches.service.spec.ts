@@ -38,7 +38,11 @@ describe('BranchesService.list', () => {
   });
 
   it('SUPERADMIN uchun tashkilot sharti yo‘q', async () => {
-    await service.list({ ...admin, role: Role.SUPERADMIN, organizationId: null });
+    await service.list({
+      ...admin,
+      role: Role.SUPERADMIN,
+      organizationId: null,
+    });
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { status: Status.ACTIVE } }),

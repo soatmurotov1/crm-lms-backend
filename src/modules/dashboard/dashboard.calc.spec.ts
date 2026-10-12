@@ -94,10 +94,7 @@ describe('computeDebts', () => {
   });
 
   it('kasrli summalar Decimal aniqligida qo‘shiladi', () => {
-    const result = computeDebts(
-      [member(1, 10, 0.1), member(1, 11, 0.2)],
-      [],
-    );
+    const result = computeDebts([member(1, 10, 0.1), member(1, 11, 0.2)], []);
 
     expect(result.totalDebt).toBe(0.3);
   });

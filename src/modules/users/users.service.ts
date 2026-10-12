@@ -8,6 +8,7 @@ import {
 import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update.user.dto';
 import { ChangeUserPasswordDto } from './dto/change-user-password.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { CreateUserDto } from './dto/create.users.dto';
@@ -27,6 +28,17 @@ import {
 
 /** JWT'dan keladigan so'rov egasi. */
 type CurrentUser = RequestUser;
+
+/** Profil javobi: parol hech qachon tanlanmaydi. */
+const ME_SELECT = {
+  id: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  role: true,
+  photo: true,
+  organization: { select: { id: true, name: true, status: true } },
+} as const;
 
 @Injectable()
 export class UsersService {
@@ -214,6 +226,50 @@ export class UsersService {
       success: true,
       message: 'User updated successfully',
     };
+  }
+
+  /** Kirgan xodimning o'z profili — ilova ochilganda shu chaqiriladi. */
+  async getMe(currentUser: CurrentUser) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+      select: ME_SELECT,
+    });
+
+    if (!user) {
+      throw new NotFoundException('User is Not found');
+    }
+
+    return { success: true as const, data: user };
+  }
+
+  /**
+   * Xodim o'z ismi va emailini o'zgartiradi. Telefon bu yerda o'zgarmaydi:
+   * u SMS-kod bilan tasdiqlanadigan alohida oqimga ega.
+   */
+  async updateMe(currentUser: CurrentUser, payload: UpdateMeDto) {
+    if (payload.email) {
+      const taken = await this.prisma.user.findFirst({
+        where: { email: payload.email, id: { not: currentUser.id } },
+        select: { id: true },
+      });
+
+      if (taken) {
+        throw new ConflictException('Bu email boshqa hisobga biriktirilgan');
+      }
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: currentUser.id },
+      data: {
+        ...(payload.fullName !== undefined
+          ? { fullName: payload.fullName }
+          : {}),
+        ...(payload.email !== undefined ? { email: payload.email } : {}),
+      },
+      select: ME_SELECT,
+    });
+
+    return { success: true as const, data: user };
   }
 
   /**

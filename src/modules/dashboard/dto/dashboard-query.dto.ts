@@ -8,13 +8,19 @@ const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_MESSAGE = "Sana YYYY-MM-DD formatida bo'lishi kerak";
 
 export class DashboardQueryDto {
-  @ApiPropertyOptional({ example: '2026-10-01', description: 'Standart: oy boshi' })
+  @ApiPropertyOptional({
+    example: '2026-10-01',
+    description: 'Standart: oy boshi',
+  })
   @IsOptional()
   @Transform(emptyToUndefined)
   @Matches(DATE_KEY, { message: DATE_MESSAGE })
   from?: string;
 
-  @ApiPropertyOptional({ example: '2026-10-09', description: 'Standart: bugun' })
+  @ApiPropertyOptional({
+    example: '2026-10-09',
+    description: 'Standart: bugun',
+  })
   @IsOptional()
   @Transform(emptyToUndefined)
   @Matches(DATE_KEY, { message: DATE_MESSAGE })

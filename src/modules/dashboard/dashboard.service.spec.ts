@@ -114,12 +114,20 @@ describe('DashboardService.getSummary', () => {
     );
   });
 
-  it('tashkilotsiz xodim uchun shart tushib qolmaydi', async () => {
-    await service.getSummary({ ...adminOrgA, organizationId: null }, {}, NOW);
+  // Tashkilotsiz hisob tashkilotsiz yozuvlarni (boshqalarnikini) ko'rmasligi kerak.
+  it('tashkilotsiz xodimga nolli javob, bazaga bormaydi', async () => {
+    const { data } = await service.getSummary(
+      { ...adminOrgA, organizationId: null },
+      {},
+      NOW,
+    );
 
-    expect(firstWhere(prisma.student.count, 0)).toMatchObject({
-      organizationId: null,
-    });
+    expect(data.totalDebt).toBe(0);
+    expect(data.debtQueue).toEqual([]);
+    expect(data.revenueTrend).toEqual([]);
+    expect(prisma.payment.aggregate).not.toHaveBeenCalled();
+    expect(prisma.studentGroup.findMany).not.toHaveBeenCalled();
+    expect(prisma.student.count).not.toHaveBeenCalled();
   });
 
   // Review Focus 2: branchId tashkilot shartini ALMASHTIRMAYDI, yoniga qo'shiladi.
@@ -142,7 +150,10 @@ describe('DashboardService.getSummary', () => {
     expect(firstWhere(prisma.student.count, 0)).toMatchObject({
       organizationId: 10,
       studentGroups: {
-        some: { status: Status.ACTIVE, group: expect.objectContaining(scope) },
+        some: {
+          status: Status.ACTIVE,
+          group: expect.objectContaining(scope) as unknown,
+        },
       },
     });
   });
@@ -199,7 +210,9 @@ describe('DashboardService.getSummary', () => {
   });
 
   it('natijalarni javobga yig‘adi', async () => {
-    prisma.payment.aggregate.mockResolvedValue({ _sum: { amount: d(250_000) } });
+    prisma.payment.aggregate.mockResolvedValue({
+      _sum: { amount: d(250_000) },
+    });
     prisma.payment.findMany.mockResolvedValue([
       { paidAt: new Date('2026-10-05T06:00:00.000Z'), amount: d(100) },
       { paidAt: new Date('2026-10-06T06:00:00.000Z'), amount: d(40) },

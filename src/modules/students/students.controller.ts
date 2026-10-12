@@ -12,7 +12,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { PaginationQueryDto } from 'src/common/dto/pagination.dto';
+import { StudentQueryDto } from './dto/student-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import {
@@ -123,7 +123,7 @@ export class StudentsController {
   @Get('all')
   getAllStudent(
     @CurrentUser() user: RequestUser,
-    @Query() query: PaginationQueryDto,
+    @Query() query: StudentQueryDto,
   ) {
     return this.studentsService.getAllStudents(user, query);
   }
