@@ -31,6 +31,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { V2Module } from './modules/v2/v2.module';
 import { isSchedulerProcess } from './common/utils/scheduler.util';
 
 @Module({
@@ -39,30 +40,12 @@ import { isSchedulerProcess } from './common/utils/scheduler.util';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    /*
-      Butun API uchun so'rov chegarasi. Buningsiz login'dan boshqa hamma
-      endpoint cheksiz chaqirilardi: ma'lumotlarni ko'chirib olish (scraping)
-      va oddiy DoS uchun ochiq edi.
-
-      Chegara `req.ip` bo'yicha hisoblanadi — u `trust proxy` sozlangani uchun
-      soxtalashtirilgan sarlavhaga emas, haqiqiy manzilga tayanadi.
-    */
     ThrottlerModule.forRoot([
       // Panel ochilganda 10-15 so'rov bir vaqtda ketadi, shuning uchun
       // qisqa oynadagi chegara shundan sezilarli kattaroq.
       { name: 'short', ttl: 1000, limit: 30 },
       { name: 'medium', ttl: 60_000, limit: 300 },
     ]),
-    /*
-      Cron faqat BITTA process'da ishlashi kerak. Cluster'da har bir worker
-      `ScheduleModule` ni yuklasa, to'lov holatini yangilaydigan 5 daqiqalik
-      job (payments.service.ts) va tokenlarni tozalaydigan kechki job
-      (session.service.ts) worker soniga karrali marta bajariladi.
-
-      `@Cron` dekoratori faqat metadata yozadi - uni ro'yxatga oladigan
-      explorer aynan shu modul ichida. Demak modulni yuklamaslikning o'zi
-      job'larni o'chirish uchun yetarli, servis kodiga tegmaymiz.
-    */
     ...(isSchedulerProcess() ? [ScheduleModule.forRoot()] : []),
     PrismaModule,
     SessionModule,
@@ -91,6 +74,7 @@ import { isSchedulerProcess } from './common/utils/scheduler.util';
     ExpensesModule,
     DashboardModule,
     BranchesModule,
+    V2Module,
   ],
   controllers: [],
   providers: [UserSeeder, { provide: APP_GUARD, useClass: ThrottlerGuard }],

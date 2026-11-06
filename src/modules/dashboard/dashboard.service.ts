@@ -184,15 +184,23 @@ export class DashboardService {
       memberships.map((row) => ({
         studentId: row.studentId,
         groupId: row.groupId,
-        price: row.group.course.price,
+        // Kurssiz guruh (/api/v2 da yaratilgan) — narx o'quvchining o'zida.
+        price: row.group.course?.price ?? new Prisma.Decimal(0),
         fullName: row.student.fullName,
         branchName: row.student.branch?.name ?? null,
       })),
-      paidRows.map((row) => ({
-        studentId: row.studentId,
-        groupId: row.groupId,
-        paid: row._sum.amount,
-      })),
+      // Guruhsiz to'lov (/api/v2) hech qaysi a'zolikka tegishli emas.
+      paidRows.flatMap((row) =>
+        row.groupId === null
+          ? []
+          : [
+              {
+                studentId: row.studentId,
+                groupId: row.groupId,
+                paid: row._sum.amount,
+              },
+            ],
+      ),
     );
 
     const attendanceCount = (status: AttendanceStatus) =>

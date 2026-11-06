@@ -25,16 +25,27 @@ type TokenPayload = {
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService,
-    private prisma: PrismaService,
-    private sessionService: SessionService,
+    protected jwtService: JwtService,
+    protected prisma: PrismaService,
+    protected sessionService: SessionService,
   ) {}
+
+  /**
+   * Token qayerdan olinadi. Standart holatda faqat `Authorization: Bearer`.
+   * `/api/v2` qatlami buni kengaytiradi: u yerda token httpOnly cookie
+   * ichida ham kelishi mumkin.
+   */
+  protected extractToken(req: AuthedRequest): string | undefined {
+    const [scheme, token] = (req.headers.authorization || '').split(' ');
+
+    return scheme === 'Bearer' && token ? token : undefined;
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthedRequest>();
-    const [scheme, token] = (req.headers.authorization || '').split(' ');
+    const token = this.extractToken(req);
 
-    if (scheme !== 'Bearer' || !token) {
+    if (!token) {
       throw new UnauthorizedException();
     }
 

@@ -59,7 +59,8 @@ export class PaymentsService {
       },
     });
 
-    if (!payment) {
+    // Guruhsiz to'lov faqat /api/v2 orqali boshqariladi.
+    if (!payment || payment.groupId === null) {
       throw new NotFoundException("To'lov topilmadi");
     }
 

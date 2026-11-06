@@ -273,6 +273,11 @@ export class GroupsService {
         return false;
       }
 
+      // Vaqti yoki kursi yo'q guruh (/api/v2 da yaratilgan) xonani band qilmaydi.
+      if (!roomGroup.startTime || !roomGroup.course) {
+        return false;
+      }
+
       const startMinute = timeToMinutes(roomGroup.startTime);
       const endMinute = startMinute + roomGroup.course.durationLesson;
 
