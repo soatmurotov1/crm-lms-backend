@@ -13,7 +13,7 @@ const student = (overrides: Partial<BalanceStudent> = {}): BalanceStudent => ({
   fullName: 'Ali Valiyev',
   branchId: 1,
   branchName: 'Asosiy filial',
-  courseType: CourseType.AUTO_SCHOOL,
+  courseType: CourseType.OFFLINE,
   ownPrice: d(1000),
   groupPrices: [],
   since: new Date('2026-09-01T00:00:00Z'),

@@ -109,7 +109,7 @@ export class V2SearchService {
           label: row.name,
           subtitle:
             row.course?.name ??
-            (row.courseType === CourseType.EXPRESS ? 'Tezkor' : 'Avto maktab'),
+            (row.courseType === CourseType.ONLINE ? 'Onlayn' : 'Oflayn'),
         })),
         staff,
       },

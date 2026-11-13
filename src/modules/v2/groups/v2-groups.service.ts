@@ -39,7 +39,8 @@ export const GROUP_SELECT = {
   created_at: true,
   branch: { select: { name: true } },
   teacher: { select: { fullName: true } },
-  course: { select: { type: true } },
+  courseId: true,
+  course: { select: { type: true, name: true } },
   templates: {
     where: { isActive: true },
     select: {
@@ -192,6 +193,8 @@ export class V2GroupsService {
         organizationId,
         courseType: fromV2CourseType(payload.courseType),
         teacherId: teacherId ?? null,
+        courseId:
+          (await this.resolveCourse(payload.courseId, organizationId)) ?? null,
         userId: actor.ref.kind === 'user' ? actor.ref.id : null,
         startDate: new Date(),
       },
@@ -236,6 +239,14 @@ export class V2GroupsService {
           ? { courseType: fromV2CourseType(payload.courseType) }
           : {}),
         ...(teacherId !== undefined ? { teacherId } : {}),
+        ...(payload.courseId !== undefined
+          ? {
+              courseId: await this.resolveCourse(
+                payload.courseId,
+                organizationId,
+              ),
+            }
+          : {}),
       },
       select: GROUP_SELECT,
     });
@@ -340,6 +351,24 @@ export class V2GroupsService {
     return teacher.id;
   }
 
+  /** Guruh kursi (LMS). `undefined` — o'zgarmaydi, `null` — olib tashlash. */
+  private async resolveCourse(
+    value: string | null | undefined,
+    organizationId: number,
+  ): Promise<number | null | undefined> {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    const id = /^\d{1,9}$/.test(value) ? Number(value) : 0;
+    const course = id
+      ? await this.prisma.course.findFirst({
+          where: { id, organizationId, deleted_at: null },
+          select: { id: true },
+        })
+      : null;
+    if (!course) throw new BadRequestException('Kurs topilmadi');
+    return course.id;
+  }
+
   toGroup(row: GroupRow) {
     return {
       id: toId(row.id),
@@ -347,6 +376,8 @@ export class V2GroupsService {
       branch_id: row.branchId ? toId(row.branchId) : '',
       ...(row.branch ? { branch_name: row.branch.name } : {}),
       course_type: toV2CourseType(row.course?.type ?? row.courseType),
+      course_id: row.courseId ? toId(row.courseId) : null,
+      course_name: row.course?.name ?? null,
       active_students: row._count.studentGroup,
       is_active: row.status === Status.ACTIVE && !row.deleted_at,
       created_at: row.created_at.toISOString(),

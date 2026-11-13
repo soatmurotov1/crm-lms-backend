@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, Status } from '@prisma/client';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import type { RequestUser } from 'src/common/guard/current-user.decorator';
@@ -30,6 +34,8 @@ const COURSE_SELECT = {
   deleted_at: true,
   created_at: true,
   branch: { select: { name: true } },
+  subjectId: true,
+  subject: { select: { name: true } },
 } satisfies Prisma.CourseSelect;
 
 type CourseRow = Prisma.CourseGetPayload<{ select: typeof COURSE_SELECT }>;
@@ -93,6 +99,10 @@ export class V2CoursesService {
       headerBranchId,
       payload.branch_id,
     );
+    const subjectId = await this.resolveSubject(
+      payload.subject_id,
+      organizationId,
+    );
 
     const row = await uniqueGuard(
       () =>
@@ -106,6 +116,7 @@ export class V2CoursesService {
             durationLesson: 0,
             organizationId,
             branchId,
+            subjectId: subjectId ?? null,
           },
           select: COURSE_SELECT,
         }),
@@ -128,6 +139,10 @@ export class V2CoursesService {
     payload: V2UpdateCourseDto,
   ) {
     const before = await this.findOwned(user, id);
+    const subjectId = await this.resolveSubject(
+      payload.subject_id,
+      before.organizationId,
+    );
     const branchId =
       payload.branch_id !== undefined
         ? await this.scope.optionalBranch(user, payload.branch_id)
@@ -153,6 +168,7 @@ export class V2CoursesService {
                 }
               : {}),
             ...(branchId !== undefined ? { branchId } : {}),
+            ...(subjectId !== undefined ? { subjectId } : {}),
           },
           select: COURSE_SELECT,
         }),
@@ -196,6 +212,28 @@ export class V2CoursesService {
     return row;
   }
 
+  /** Fan (LMS). `undefined` — o'zgarmaydi, `null` — olib tashlash. */
+  private async resolveSubject(
+    value: string | null | undefined,
+    organizationId: number | null,
+  ): Promise<number | null | undefined> {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    const id = /^\d{1,9}$/.test(value) ? Number(value) : 0;
+    const subject = id
+      ? await this.prisma.subject.findFirst({
+          where: {
+            id,
+            deleted_at: null,
+            ...(organizationId ? { organizationId } : {}),
+          },
+          select: { id: true },
+        })
+      : null;
+    if (!subject) throw new BadRequestException('Fan topilmadi');
+    return subject.id;
+  }
+
   toCourse(row: CourseRow) {
     return {
       id: toId(row.id),
@@ -207,6 +245,8 @@ export class V2CoursesService {
       duration_days: row.durationDays ?? row.durationMonth * 30,
       is_active: row.status === Status.ACTIVE && !row.deleted_at,
       created_at: row.created_at.toISOString(),
+      subject_id: row.subjectId ? toId(row.subjectId) : null,
+      subject_name: row.subject?.name ?? null,
     };
   }
 }

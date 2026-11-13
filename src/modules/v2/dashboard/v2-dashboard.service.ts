@@ -60,7 +60,6 @@ const TREND_MONTHS = 6;
 const EXPENSE_CATEGORIES = new Set([
   'rent',
   'utilities',
-  'vehicle',
   'marketing',
   'supplies',
   'administrative',
@@ -262,7 +261,7 @@ export class V2DashboardService {
         inPeriod
           .filter(
             (payment) =>
-              (typeOf.get(payment.studentId) ?? CourseType.AUTO_SCHOOL) ===
+              (typeOf.get(payment.studentId) ?? CourseType.OFFLINE) ===
               type,
           )
           .map((payment) => payment.amount),
@@ -330,11 +329,11 @@ export class V2DashboardService {
           },
           result_stats: results,
           course_mix: {
-            tezkor: balances.filter(
-              (balance) => balance.courseType === CourseType.EXPRESS,
+            online: balances.filter(
+              (balance) => balance.courseType === CourseType.ONLINE,
             ).length,
-            avto_maktab: balances.filter(
-              (balance) => balance.courseType === CourseType.AUTO_SCHOOL,
+            offline: balances.filter(
+              (balance) => balance.courseType === CourseType.OFFLINE,
             ).length,
           },
           collection: {
@@ -352,12 +351,12 @@ export class V2DashboardService {
             totals.totalPrice.toNumber(),
           ),
           revenue_by_course_type: {
-            tezkor: {
-              revenue: revenueOf(CourseType.EXPRESS),
+            online: {
+              revenue: revenueOf(CourseType.ONLINE),
               per_lesson: null,
             },
-            avto_maktab: {
-              revenue: revenueOf(CourseType.AUTO_SCHOOL),
+            offline: {
+              revenue: revenueOf(CourseType.OFFLINE),
               per_lesson: null,
             },
           },
@@ -452,8 +451,8 @@ export class V2DashboardService {
 
     const empty = {
       total_students: 0,
-      active_tezkor: 0,
-      active_avto: 0,
+      active_online: 0,
+      active_offline: 0,
       new_this_month: 0,
       new_last_month: 0,
       total_revenue: 0,
@@ -465,8 +464,8 @@ export class V2DashboardService {
       result_stats: { oqimoqda: 0, topshirdi: 0, yiqildi: 0 },
       monthly_enrollment: months.map((month) => ({
         month,
-        tezkor: 0,
-        avto_maktab: 0,
+        online: 0,
+        offline: 0,
       })),
       monthly_revenue: months.map((month) => ({ month, amount: 0 })),
       branch_stats: [] as {
@@ -566,16 +565,16 @@ export class V2DashboardService {
 
     const enrollmentByMonth = new Map<
       string,
-      { tezkor: number; avto_maktab: number }
+      { online: number; offline: number }
     >();
     for (const row of enrolled) {
       const month = tashkentDateKey(row.created_at).slice(0, 7);
       const bucket = enrollmentByMonth.get(month) ?? {
-        tezkor: 0,
-        avto_maktab: 0,
+        online: 0,
+        offline: 0,
       };
-      if (typeOf.get(row.id) === CourseType.EXPRESS) bucket.tezkor += 1;
-      else bucket.avto_maktab += 1;
+      if (typeOf.get(row.id) === CourseType.ONLINE) bucket.online += 1;
+      else bucket.offline += 1;
       enrollmentByMonth.set(month, bucket);
     }
 
@@ -585,11 +584,11 @@ export class V2DashboardService {
     return {
       data: {
         total_students: balances.length,
-        active_tezkor: activeRows.balances.filter(
-          (balance) => balance.courseType === CourseType.EXPRESS,
+        active_online: activeRows.balances.filter(
+          (balance) => balance.courseType === CourseType.ONLINE,
         ).length,
-        active_avto: activeRows.balances.filter(
-          (balance) => balance.courseType === CourseType.AUTO_SCHOOL,
+        active_offline: activeRows.balances.filter(
+          (balance) => balance.courseType === CourseType.OFFLINE,
         ).length,
         new_this_month: newThisMonth,
         new_last_month: newLastMonth,
@@ -608,7 +607,7 @@ export class V2DashboardService {
         result_stats: countBy(byResult, 'result', RESULTS),
         monthly_enrollment: months.map((month) => ({
           month,
-          ...(enrollmentByMonth.get(month) ?? { tezkor: 0, avto_maktab: 0 }),
+          ...(enrollmentByMonth.get(month) ?? { online: 0, offline: 0 }),
         })),
         monthly_revenue: months.map((month) => ({
           month,
@@ -959,7 +958,7 @@ export class V2DashboardService {
           suspended: 0,
         },
         result_stats: { oqimoqda: 0, topshirdi: 0, yiqildi: 0 },
-        course_mix: { tezkor: 0, avto_maktab: 0 },
+        course_mix: { online: 0, offline: 0 },
         collection: { paid: 0, partial: 0, debt: 0, coverage_rate: 0 },
         debt_aging: {
           bucket_0_30: 0,
@@ -970,8 +969,8 @@ export class V2DashboardService {
         arpu: 0,
         cash_collection_rate: 0,
         revenue_by_course_type: {
-          tezkor: { revenue: 0, per_lesson: null },
-          avto_maktab: { revenue: 0, per_lesson: null },
+          online: { revenue: 0, per_lesson: null },
+          offline: { revenue: 0, per_lesson: null },
         },
         attendance_rate: null,
       },

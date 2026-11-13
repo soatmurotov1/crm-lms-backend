@@ -134,14 +134,14 @@ describe('DashboardService.getSummary', () => {
   it('filial va kurs turi filtri tashkilot sharti bilan birga qo‘llanadi', async () => {
     await service.getSummary(
       adminOrgA,
-      { branchId: 77, courseType: CourseType.EXPRESS },
+      { branchId: 77, courseType: CourseType.ONLINE },
       NOW,
     );
 
     const scope = {
       organizationId: 10,
       branchId: 77,
-      course: { type: CourseType.EXPRESS },
+      course: { type: CourseType.ONLINE },
     };
 
     expect(firstWhere(prisma.payment.aggregate).group).toMatchObject(scope);

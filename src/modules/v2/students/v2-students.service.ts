@@ -177,10 +177,10 @@ export class V2StudentsService {
     const registeredById =
       links.registeredById ?? (actor.ref.kind === 'user' ? actor.ref.id : null);
 
-    // Tezkor kursda boshlang'ich to'lov `amount_paid`, avto maktabda
+    // Onlayn kursda boshlang'ich to'lov `amount_paid`, oflayn kursda
     // `initial_payment` maydonida keladi.
     const firstPayment =
-      payload.course_type === 'tezkor'
+      payload.course_type === 'online'
         ? (payload.amount_paid ?? 0)
         : (payload.initial_payment ?? payload.amount_paid ?? 0);
     const method = fromV2PaymentMethod(payload.payment_method) ?? PaymentMethod.CASH;
@@ -218,7 +218,6 @@ export class V2StudentsService {
               status: LEGACY_STATUS[payload.status ?? 'active'],
               result: payload.result ?? 'oqimoqda',
               hasDocument: payload.has_document ?? false,
-              o83: payload.o83 ?? false,
               contractNumber: payload.contract_number || null,
               notes: payload.notes || null,
               startDate: payload.start_date
@@ -353,7 +352,6 @@ export class V2StudentsService {
               ...(payload.has_document !== undefined
                 ? { hasDocument: payload.has_document }
                 : {}),
-              ...(payload.o83 !== undefined ? { o83: payload.o83 } : {}),
               ...(payload.contract_number !== undefined
                 ? { contractNumber: payload.contract_number || null }
                 : {}),

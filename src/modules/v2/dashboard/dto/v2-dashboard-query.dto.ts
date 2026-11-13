@@ -49,10 +49,10 @@ export class V2CompanyOverviewQueryDto extends V2FinanceQueryDto {
   @Matches(ID, { message: 'Tashkilot identifikatori noto‘g‘ri' })
   company_id?: string;
 
-  @ApiPropertyOptional({ enum: ['tezkor', 'avto_maktab'] })
+  @ApiPropertyOptional({ enum: ['online', 'offline'] })
   @IsOptional()
   @Transform(emptyToUndefined)
-  @IsIn(['tezkor', 'avto_maktab'], { message: 'Noto‘g‘ri kurs turi' })
+  @IsIn(['online', 'offline'], { message: 'Noto‘g‘ri kurs turi' })
   course_type?: V2CourseType;
 
   @ApiPropertyOptional({ enum: ['day', 'week'], default: 'day' })
@@ -78,9 +78,9 @@ export class V2AnalyticsQueryDto {
   @Matches(ID, { message: 'Tashkilot identifikatori noto‘g‘ri' })
   company_id?: string;
 
-  @ApiPropertyOptional({ enum: ['tezkor', 'avto_maktab'] })
+  @ApiPropertyOptional({ enum: ['online', 'offline'] })
   @IsOptional()
   @Transform(emptyToUndefined)
-  @IsIn(['tezkor', 'avto_maktab'], { message: 'Noto‘g‘ri kurs turi' })
+  @IsIn(['online', 'offline'], { message: 'Noto‘g‘ri kurs turi' })
   course_type?: V2CourseType;
 }

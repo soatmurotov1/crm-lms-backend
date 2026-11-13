@@ -458,7 +458,7 @@ export class V2PaymentsService {
         branch_id: branchId ? toId(branchId) : '',
         branch_name: branchName,
         course_type: toV2CourseType(
-          balance?.courseType ?? CourseType.AUTO_SCHOOL,
+          balance?.courseType ?? CourseType.OFFLINE,
         ),
         total_price: balance?.totalPrice.toNumber() ?? 0,
         amount_paid: row.amount.toNumber(),

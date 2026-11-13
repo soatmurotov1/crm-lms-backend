@@ -43,7 +43,7 @@ export interface V2User {
   company_features: Record<string, boolean>;
   phone: string;
   avatar?: string;
-  specialization?: 'THEORY' | 'PRACTICE';
+  specialization?: string;
   is_active: boolean;
   created_at: string;
   must_change_password: boolean;
@@ -463,9 +463,7 @@ export class V2AuthService {
       photo: teacher.photo,
       role: 'teacher' as const,
       status: teacher.status,
-      specialization: (teacher.specialization === 'PRACTICE'
-        ? 'PRACTICE'
-        : 'THEORY') as 'THEORY' | 'PRACTICE',
+      specialization: teacher.specialization || undefined,
       homeBranchId: teacher.branchId,
       accessVersion: teacher.accessVersion ?? 0,
       permissions: teacher.permissions,

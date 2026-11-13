@@ -10,11 +10,12 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { emptyToUndefined, toIdString, trim } from '../common/v2-dto.util';
 import type { V2CourseType } from '../common/v2.mapper';
 
-const COURSE_TYPES = ['tezkor', 'avto_maktab'];
+const COURSE_TYPES = ['online', 'offline'];
 
 export class V2CoursesQueryDto {
   @ApiPropertyOptional()
@@ -49,7 +50,7 @@ export class V2CreateCourseDto {
   @IsNotEmpty({ message: 'Filialni tanlang' })
   branch_id: string;
 
-  @ApiProperty({ enum: COURSE_TYPES, default: 'avto_maktab' })
+  @ApiProperty({ enum: COURSE_TYPES, default: 'offline' })
   @IsIn(COURSE_TYPES, { message: 'Noto‘g‘ri kurs turi' })
   course_type: V2CourseType;
 
@@ -60,7 +61,7 @@ export class V2CreateCourseDto {
   @Max(3650)
   duration_days: number;
 
-  @ApiProperty({ example: 'Tezkor kurs' })
+  @ApiProperty({ example: 'Frontend dasturlash' })
   @Transform(trim)
   @IsString()
   @IsNotEmpty({ message: 'Kurs nomi kiritilishi kerak' })
@@ -72,6 +73,17 @@ export class V2CreateCourseDto {
   @IsNumber()
   @Min(0)
   price: number;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Fan / kategoriya (LMS); null — olib tashlash',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @Transform(toIdString)
+  @IsString()
+  subject_id?: string | null;
 }
 
 export class V2UpdateCourseDto {
@@ -108,4 +120,15 @@ export class V2UpdateCourseDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Fan / kategoriya (LMS); null — olib tashlash',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @Transform(toIdString)
+  @IsString()
+  subject_id?: string | null;
 }

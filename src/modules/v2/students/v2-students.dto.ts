@@ -22,7 +22,7 @@ import {
   trim,
 } from '../common/v2-dto.util';
 
-export const COURSE_TYPES = ['tezkor', 'avto_maktab'] as const;
+export const COURSE_TYPES = ['online', 'offline'] as const;
 export const PAYMENT_METHODS = ['naqd', 'karta', 'perechisleniya'] as const;
 export const STUDENT_STATUSES = [
   'active',
@@ -156,7 +156,7 @@ class V2StudentFieldsDto {
   @MaxLength(255)
   address?: string;
 
-  @ApiPropertyOptional({ description: 'To‘lov (tezkor: boshlang‘ich, tahrirda: qo‘shimcha)' })
+  @ApiPropertyOptional({ description: 'To‘lov (online: boshlang‘ich, tahrirda: qo‘shimcha)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -213,7 +213,7 @@ class V2StudentFieldsDto {
   @IsBoolean()
   has_document?: boolean;
 
-  @ApiPropertyOptional({ description: 'Avto maktab: boshlang‘ich to‘lov' })
+  @ApiPropertyOptional({ description: 'Oflayn kurs: boshlang‘ich to‘lov' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -238,11 +238,6 @@ class V2StudentFieldsDto {
   @IsString()
   @MaxLength(2000)
   notes?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  o83?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -52,7 +52,7 @@ describe('ageDebts', () => {
       fullName: `O‘quvchi ${studentId}`,
       branchId: 1,
       branchName: 'Asosiy filial',
-      courseType: CourseType.AUTO_SCHOOL,
+      courseType: CourseType.OFFLINE,
       totalPrice: d(debt),
       paid: d(0),
       debt: d(debt),

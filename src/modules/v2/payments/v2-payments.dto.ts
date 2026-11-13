@@ -19,7 +19,7 @@ import {
 } from '../common/v2-dto.util';
 
 export const PAYMENT_METHODS = ['naqd', 'karta', 'perechisleniya'] as const;
-const COURSE_TYPES = ['tezkor', 'avto_maktab'];
+const COURSE_TYPES = ['online', 'offline'];
 const SORTS = ['student_name', 'amount_paid', 'remaining_debt', 'date'];
 
 const dateOnly = ({ value }: { value: unknown }) =>
@@ -50,7 +50,7 @@ export class V2PaymentsQueryDto extends V2PageQueryDto {
   @IsOptional()
   @Transform(emptyToUndefined)
   @IsIn(COURSE_TYPES)
-  course_type?: 'tezkor' | 'avto_maktab';
+  course_type?: 'online' | 'offline';
 
   @ApiPropertyOptional({ example: '2026-10-01' })
   @IsOptional()

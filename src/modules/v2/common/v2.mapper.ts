@@ -3,7 +3,7 @@ import { CourseType, PaymentMethod, Prisma, Role } from '@prisma/client';
 import { tashkentDateKey } from 'src/common/utils/tashkent-time.util';
 
 /**
- * `/api/v2` — Automaktab tenant frontendi (`autodrive-frontend`) kutadigan
+ * `/api/v2` — EduCRM tenant frontendi (`frontend`) kutadigan
  * shartnoma. Bu faylda ikki dunyo orasidagi tarjima turadi:
  *
  *  - maydonlar `snake_case` da;
@@ -42,18 +42,18 @@ export const USER_ROLE_OF: Partial<Record<V2Role, Role>> = {
   accountant: Role.ACCOUNTANT,
 };
 
-export type V2CourseType = 'tezkor' | 'avto_maktab';
+export type V2CourseType = 'online' | 'offline';
 
 export const toV2CourseType = (type: CourseType): V2CourseType =>
-  type === CourseType.EXPRESS ? 'tezkor' : 'avto_maktab';
+  type === CourseType.ONLINE ? 'online' : 'offline';
 
 export const fromV2CourseType = (
   type?: V2CourseType | string | null,
 ): CourseType | undefined =>
-  type === 'tezkor'
-    ? CourseType.EXPRESS
-    : type === 'avto_maktab'
-      ? CourseType.AUTO_SCHOOL
+  type === 'online'
+    ? CourseType.ONLINE
+    : type === 'offline'
+      ? CourseType.OFFLINE
       : undefined;
 
 export type V2PaymentMethod = 'naqd' | 'karta' | 'perechisleniya';

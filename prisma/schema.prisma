@@ -129,10 +129,12 @@ enum GradeType {
   OTHER
 }
 
-/// Kurs turi: namunadagi "Tezkor" va "Avto maktab" filtri.
+/// Kurs turi: onlayn yoki oflayn.
 enum CourseType {
-  EXPRESS
-  AUTO_SCHOOL
+  /// Onlayn kurs (individual, guruhsiz bo'lishi mumkin).
+  ONLINE
+  /// Oflayn kurs (guruh bilan o'qitiladi).
+  OFFLINE
 }
 
 model User {
@@ -191,8 +193,8 @@ model Teacher {
   organizationId Int?
   /// Yangi panelga kirish uchun (ixtiyoriy).
   email          String?    @unique
-  /// THEORY — nazariya, PRACTICE — amaliy haydash ustozi.
-  specialization String     @default("THEORY")
+  /// O'qituvchi mutaxassisligi (fan nomi, masalan "Matematika").
+  specialization String     @default("")
   branchId       Int?
   accessVersion  Int        @default(0)
   permissions    Json?
@@ -227,7 +229,7 @@ model Student {
   organizationId Int?
   branchId       Int?
 
-  // --- /api/v2 (Automaktab paneli) maydonlari ---
+  // --- /api/v2 (EduCRM paneli) maydonlari ---
   firstName           String?
   lastName            String?
   middleName          String?
@@ -246,7 +248,6 @@ model Student {
   /// oqimoqda | topshirdi | yiqildi
   result              String         @default("oqimoqda")
   hasDocument         Boolean        @default(false)
-  o83                 Boolean        @default(false)
   contractNumber      String?
   notes               String?
   startDate           DateTime?
@@ -274,7 +275,9 @@ model Student {
   examResponses     ExamResponse[]
   examResults       ExamResult[]
   grades            Grade[]
-  studentExams      StudentExam[]
+  lessonProgress    LessonProgress[]
+  submissions       AssignmentSubmission[]
+  quizAttempts      QuizAttempt[]
 
   @@index([organizationId])
   @@index([branchId])
@@ -287,19 +290,25 @@ model Course {
   durationLesson Int
   status         Status       @default(ACTIVE)
   level          CourseLevel?
-  type           CourseType   @default(AUTO_SCHOOL)
+  type           CourseType   @default(OFFLINE)
   price          Decimal
   description    String?
   organizationId Int?
   branchId       Int?
   /// Kurs davomiyligi kunlarda (/api/v2).
   durationDays   Int?
+  /// Fan / kategoriya (LMS).
+  subjectId      Int?
   deleted_at     DateTime?
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   branch       Branch?       @relation("CourseBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  modules      CourseModule[]
+  assignments  Assignment[]
+  quizzes      Quiz[]
   students     Student[]     @relation("StudentCourse")
   groups       Group[]
   payments     Payment[]
@@ -310,6 +319,7 @@ model Course {
   // xuddi shu nomdagi kurs bo'lishi mumkin.
   @@unique([organizationId, name])
   @@index([organizationId])
+  @@index([subjectId])
 }
 
 model Room {
@@ -341,7 +351,7 @@ model Group {
   status         Status     @default(ACTIVE)
   organizationId Int?
   branchId       Int?
-  courseType     CourseType @default(AUTO_SCHOOL)
+  courseType     CourseType @default(OFFLINE)
   deleted_at     DateTime?
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
@@ -359,6 +369,8 @@ model Group {
   grades        Grade[]
   notifications Notification[]
   templates     ScheduleTemplate[]
+  assignments   Assignment[]
+  quizzes       Quiz[]
 
   // Guruh nomi kurs ichida takrorlanmaydi. Kurs allaqachon bitta tashkilotga
   // tegishli, ya'ni bu cheklov tashkilotlar orasida to'qnashmaydi.
@@ -451,7 +463,7 @@ model Lesson {
   teacherId  Int?
   /// Dars vaqti (/api/v2). Eski darslarda bo'sh — `created_at` ishlatiladi.
   date       DateTime?
-  /// theory | practice
+  /// theory (nazariy) | practice (amaliy mashg'ulot)
   lessonType String    @default("theory")
   /// Jadval shablonidan yaratilgan bo'lsa.
   templateId Int?
@@ -726,6 +738,7 @@ model Organization {
   leads    Lead[]
   expenses Expense[]
   branches Branch[]
+  subjects Subject[]
 }
 
 /// Tashkilot filiali. Guruh va oʻquvchi bitta filialga biriktiriladi.
@@ -776,13 +789,14 @@ model Lead {
   status         Status    @default(ACTIVE)
   organizationId Int?
 
-  // --- /api/v2 (Automaktab paneli) maydonlari ---
+  // --- /api/v2 (EduCRM paneli) maydonlari ---
   branchId          Int?
   firstName         String?
   lastName          String?
   email             String?
   courseType        CourseType?
-  category          String?
+  /// O'qish yo'nalishi (masalan "Frontend", "IELTS").
+  direction         String?
   sourceOther       String?
   referrerStudentId Int?
   referrerStaffId   Int?
@@ -846,7 +860,6 @@ model Expense {
 
   // --- /api/v2 maydonlari ---
   branchId       Int?
-  vehicleId      Int?
   /// O'qituvchi hisob-kitobi (`teacher_settlement`) uchun — Teacher.id.
   teacherId      Int?
   /// `YYYY-MM` — o'qituvchi hisob-kitobi oyi.
@@ -861,7 +874,7 @@ model Expense {
   cancelledAt    DateTime?
   cancelReason   String?
   deleteReason   String?
-  /// Avtomatik yaratilgan bo'lsa manbasi (masalan `fuel`).
+  /// Avtomatik yaratilgan bo'lsa manbasi.
   sourceType     String?
   sourceId       Int?
 
@@ -1014,7 +1027,7 @@ model Grade {
 }
 
 // ===========================================================================
-// /api/v2 — Automaktab tenant paneli (autodrive-frontend) uchun modellar.
+// /api/v2 — EduCRM tenant paneli (frontend) uchun modellar.
 //
 // Xodim havolalari (`authorId`, `instructorId`, ...) matn ko'rinishida
 // saqlanadi: `User` id'si — "12", `Teacher` id'si — "t12". Ikki jadvalning
@@ -1058,24 +1071,6 @@ model ScheduleTemplate {
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([groupId])
-}
-
-/// Davlat imtihoni natijasi (nazariya / amaliyot).
-model StudentExam {
-  id          Int      @id @default(autoincrement())
-  studentId   Int
-  /// THEORY | PRACTICE
-  examType    String
-  score       Int?
-  passed      Boolean
-  notes       String?
-  date        DateTime @default(now())
-  createdById String?
-  created_at  DateTime @default(now())
-
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@index([studentId])
 }
 
 /// Ruxsatlar shabloni (tashkilot ichida qayta ishlatiladigan to'plam).
@@ -1205,7 +1200,7 @@ model DemoRequest {
   created_at   DateTime @default(now())
 }
 
-/// Bazada saqlanadigan fayl (chek rasmi, ko'rik surati, savol diagrammasi).
+/// Bazada saqlanadigan fayl (chek rasmi, hujjat va h.k.).
 model StoredFile {
   id             Int      @id @default(autoincrement())
   organizationId Int?
@@ -1216,418 +1211,251 @@ model StoredFile {
   created_at     DateTime @default(now())
 }
 
-// --- Avtopark ---------------------------------------------------------------
-
-model Vehicle {
-  id                 Int      @id @default(autoincrement())
-  organizationId     Int
-  branchId           Int
-  plateNumber        String
-  vin                String?
-  make               String
-  model              String
-  manufactureYear    Int
-  categories         String[]
-  odometerKm         Int      @default(0)
-  /// active | out_of_service | retired
-  status             String   @default("active")
-  /// Mashina biriktirilgan ustoz/xodim: "12" yoki "t12".
-  currentCustodianId String?
-  fuelTypes          String[] @default([])
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-
-  documents   VehicleDocument[]
-  maintenance VehicleMaintenance[]
-  transfers   VehicleTransfer[]
-  inspections VehicleInspection[]
-  defects     VehicleDefect[]
-  fuelRecords FuelRecord[]
-  sessions    DrivingSession[]
-
-  @@unique([organizationId, plateNumber])
-  @@index([branchId])
-}
-
-model VehicleDocument {
-  id         Int       @id @default(autoincrement())
-  vehicleId  Int
-  /// registration | insurance | technical_inspection | other
-  type       String
-  label      String
-  reference  String?
-  expiresOn  DateTime?
-  created_at DateTime  @default(now())
-
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-}
-
-model VehicleMaintenance {
-  id                Int       @id @default(autoincrement())
-  vehicleId         Int
-  description       String
-  startedAt         DateTime
-  completedAt       DateTime?
-  nextDueOn         DateTime?
-  nextDueOdometerKm Int?
-  created_at        DateTime  @default(now())
-
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-}
-
-model VehicleTransfer {
-  id              Int      @id @default(autoincrement())
-  vehicleId       Int
-  fromBranchId    Int
-  toBranchId      Int
-  reason          String
-  transferredById String
-  transferredAt   DateTime @default(now())
-
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-}
-
-/// Mashinani qabul qilish / topshirish ko'rigi.
-model VehicleInspection {
-  id             Int      @id @default(autoincrement())
-  organizationId Int
-  branchId       Int
-  vehicleId      Int
-  requestId      String   @unique
-  authorId       String
-  receiverId     String
-  /// acceptance | return
-  kind           String
-  /// draft | submitted | approved | rejected
-  status         String   @default("draft")
-  odometerKm     Int
-  notes          String?
-  overrideReason String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  vehicle  Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  evidence InspectionEvidence[]
-  reviews  InspectionReview[]
-
-  @@index([organizationId, created_at])
-}
-
-model InspectionEvidence {
-  id           Int      @id @default(autoincrement())
-  inspectionId Int
-  /// front | back | left | right | odometer | defect
-  slot         String
-  note         String?
-  fileId       Int
-  mimeType     String
-  size         Int
-  created_at   DateTime @default(now())
-
-  inspection VehicleInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-}
-
-model InspectionReview {
-  id           Int      @id @default(autoincrement())
-  inspectionId Int
-  actorId      String
-  /// approve | retake | service | stop
-  decision     String
-  reason       String?
-  created_at   DateTime @default(now())
-
-  inspection VehicleInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-}
-
-model VehicleDefect {
+/// O'quv markazi hujjati (shartnoma, sertifikat, buyruq va h.k.).
+/// Fayl `StoredFile` da saqlanadi — faqat avtorizatsiyadan o'tgan so'rov oladi.
+model Document {
   id             Int       @id @default(autoincrement())
-  vehicleId      Int
-  inspectionId   Int?
-  description    String
-  /// open | resolved
-  status         String    @default("open")
-  fileId         Int?
-  reportedAt     DateTime  @default(now())
-  resolvedAt     DateTime?
-  resolvedById   String?
-  resolutionNote String?
-
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-
-  @@index([vehicleId, status])
-}
-
-// --- Yoqilg'i ---------------------------------------------------------------
-
-model FuelStation {
-  id             Int      @id @default(autoincrement())
   organizationId Int
-  branchId       Int
-  name           String
-  stir           String?
-  address        String?
-  contact        String?
-  active         Boolean  @default(true)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  records         FuelRecord[]
-  reconciliations FuelReconciliation[]
-
-  @@index([organizationId, branchId])
-}
-
-model FuelRecord {
-  id             Int      @id @default(autoincrement())
-  organizationId Int
-  branchId       Int
-  vehicleId      Int
-  stationId      Int
-  requestId      String   @unique
-  authorId       String
-  /// draft | submitted | approved | rejected | cancelled
-  status         String   @default("draft")
-  /// manual_review | source_verified
-  sourceStatus   String   @default("manual_review")
-  sourceData     Json?
-  occurredAt     DateTime
-  odometerKm     Int
-  /// partner_credit | school_card | advance | personal
-  fundingSource  String
-  qrUrl          String?
-  /// [{ fuel_type, unit, quantity, unit_price, line_total, name?, mxik? }]
-  lines          Json
-  total          Decimal
-  expenseId      Int?
-  version        Int      @default(1)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  vehicle  Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  station  FuelStation    @relation(fields: [stationId], references: [id], onDelete: Restrict)
-  evidence FuelEvidence[]
-  history  FuelHistory[]
+  branchId       Int?
+  title          String
+  /// contract | certificate | order | report | other
+  type           String    @default("other")
+  studentId      Int?
+  groupId        Int?
+  fileId         Int
+  fileName       String
+  mimeType       String
+  size           Int
+  note           String?
+  uploadedById   String
+  uploadedByName String
+  deleted_at     DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   @@index([organizationId, created_at])
-  @@index([vehicleId, occurredAt])
+  @@index([studentId])
+  @@index([groupId])
 }
 
-model FuelEvidence {
-  id           Int      @id @default(autoincrement())
-  fuelRecordId Int
-  /// receipt | odometer
-  slot         String
-  fileId       Int
-  created_at   DateTime @default(now())
+// ============================================================================
+// LMS (o'quv boshqaruvi): fanlar, o'quv dasturi, topshiriqlar, testlar, progress
+// ============================================================================
 
-  record FuelRecord @relation(fields: [fuelRecordId], references: [id], onDelete: Cascade)
-}
-
-model FuelHistory {
-  id           Int      @id @default(autoincrement())
-  fuelRecordId Int
-  action       String
-  changes      Json?
-  reason       String?
-  actorId      String
-  created_at   DateTime @default(now())
-
-  record FuelRecord @relation(fields: [fuelRecordId], references: [id], onDelete: Cascade)
-}
-
-model FuelReconciliation {
-  id              Int      @id @default(autoincrement())
-  stationId       Int
-  requestId       String   @unique
-  statementAmount Decimal
-  discrepancy     Decimal
-  reason          String
-  actorId         String
-  created_at      DateTime @default(now())
-
-  station FuelStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
-}
-
-// --- Amaliy mashg'ulotlar ---------------------------------------------------
-
-model TrainingProgram {
-  id              Int        @id @default(autoincrement())
-  organizationId  Int
-  branchId        Int
-  courseId        Int?
-  name            String
-  courseType      CourseType
-  category        String
-  requiredMinutes Int
-  isActive        Boolean    @default(true)
-  approvedById    String
-  approvedAt      DateTime   @default(now())
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
-
-  enrollments TrainingEnrollment[]
-
-  @@index([organizationId, branchId])
-}
-
-model TrainingEnrollment {
-  id             Int      @id @default(autoincrement())
+/// Fan yoki kategoriya. `parentId` orqali ierarxiya (kategoriya -> fan).
+model Subject {
+  id             Int       @id @default(autoincrement())
   organizationId Int
-  branchId       Int
-  studentId      Int
-  programId      Int?
-  /// legacy | active | completed | cancelled
-  status         String   @default("active")
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  parentId       Int?
+  name           String
+  description    String?
+  color          String?
+  deleted_at     DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
-  program  TrainingProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
-  sessions DrivingSession[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       Subject?     @relation("SubjectTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Subject[]    @relation("SubjectTree")
+  courses      Course[]
 
-  @@index([organizationId, branchId])
+  @@unique([organizationId, name])
+  @@index([parentId])
+}
+
+/// Kurs o'quv dasturidagi modul (bo'lim).
+model CourseModule {
+  id          Int      @id @default(autoincrement())
+  courseId    Int
+  title       String
+  description String?
+  position    Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons CourseLesson[]
+
+  @@index([courseId, position])
+}
+
+/// O'quv dasturi darsi (jadvaldagi `Lesson` mashg'ulot vaqti, bu esa mazmun).
+model CourseLesson {
+  id          Int      @id @default(autoincrement())
+  moduleId    Int
+  title       String
+  content     String?
+  videoUrl    String?
+  durationMin Int?
+  position    Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  module    CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  materials LessonMaterial[]
+  progress  LessonProgress[]
+
+  @@index([moduleId, position])
+}
+
+/// Dars materiali: video, fayl (`StoredFile`) yoki tashqi havola.
+model LessonMaterial {
+  id         Int      @id @default(autoincrement())
+  lessonId   Int
+  title      String
+  /// video | file | link
+  kind       String
+  url        String?
+  fileId     Int?
+  fileName   String?
+  mimeType   String?
+  size       Int?
+  created_at DateTime @default(now())
+
+  lesson CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+}
+
+/// O'quvchi o'quv dasturi darsini tugatganini belgilaydi.
+model LessonProgress {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  lessonId    Int
+  completedAt DateTime @default(now())
+
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson  CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId])
+  @@index([lessonId])
+}
+
+/// Topshiriq (uy vazifasi). Kursga va/yoki guruhga biriktiriladi.
+model Assignment {
+  id             Int       @id @default(autoincrement())
+  organizationId Int
+  courseId       Int?
+  groupId        Int?
+  title          String
+  description    String?
+  dueDate        DateTime?
+  maxScore       Int       @default(100)
+  /// draft | published | closed
+  status         String    @default("published")
+  createdById    String?
+  createdByName  String?
+  deleted_at     DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  course      Course?                @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  group       Group?                 @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  submissions AssignmentSubmission[]
+
+  @@index([organizationId, created_at])
+  @@index([courseId])
+  @@index([groupId])
+}
+
+/// O'quvchining topshiriq javobi va bahosi.
+model AssignmentSubmission {
+  id           Int       @id @default(autoincrement())
+  assignmentId Int
+  studentId    Int
+  text         String?
+  fileId       Int?
+  fileName     String?
+  score        Int?
+  feedback     String?
+  /// submitted | graded | returned
+  status       String    @default("submitted")
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+  gradedByName String?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
   @@index([studentId])
 }
 
-model DrivingSession {
-  id                   Int       @id @default(autoincrement())
-  organizationId       Int
-  branchId             Int
-  enrollmentId         Int
-  studentId            Int
-  vehicleId            Int
-  /// Faqat amaliy (PRACTICE) ustoz — "t12".
-  instructorId         String
-  startsAt             DateTime
-  endsAt               DateTime
-  /// planned | submitted | approved | rejected | cancelled
-  status               String    @default("planned")
-  plannedMinutes       Int
-  actualMinutes        Int?
-  approvedMinutes      Int       @default(0)
-  gpsExceptionReason   String?
-  submittedAt          DateTime?
-  submittedById        String?
-  reviewedAt           DateTime?
-  reviewedById         String?
-  rejectionReason      String?
-  cancellationReason   String?
-  lastCorrectionReason String?
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
-
-  enrollment TrainingEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  vehicle    Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-
-  @@index([organizationId, startsAt])
-  @@index([vehicleId, startsAt])
-  @@index([instructorId, startsAt])
-}
-
-// --- Savollar bazasi va testlar ---------------------------------------------
-
-model Question {
-  id                 Int       @id @default(autoincrement())
-  organizationId     Int?
-  branchId           Int?
-  /// platform_public | school_private
-  visibility         String    @default("school_private")
-  /// draft | in_review | published | retired | disputed
-  status             String    @default("draft")
-  category           String    @default("B")
-  topic              String
-  authorId           String
-  reviewerId         String?
-  publishedVersionId Int?
-  draftVersionId     Int?
-  publishedAt        DateTime?
-  retiredAt          DateTime?
-  disputedAt         DateTime?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
-
-  versions QuestionVersion[]
-  media    QuestionMedia[]
-
-  @@index([organizationId, status])
-}
-
-model QuestionVersion {
-  id               Int       @id @default(autoincrement())
-  questionId       Int
-  versionNumber    Int
-  correctOptionKey String
-  sourceUrl        String?
-  legalProvision   String?
-  diagramMediaId   Int?
-  /// [{ locale, stem, explanation, options: [{ option_key, text, sort_order }] }]
-  locales          Json
-  publishedAt      DateTime?
-  created_at       DateTime  @default(now())
-
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([questionId, versionNumber])
-}
-
-model QuestionMedia {
-  id              Int      @id @default(autoincrement())
-  questionId      Int
-  fileId          Int
-  mimeType        String
-  byteSize        Int
-  sha256          String
-  altText         String
-  rightsBasis     String
-  rightsHolder    String
-  rightsConfirmed Boolean
-  created_at      DateTime @default(now())
-
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-}
-
-model TestTemplate {
-  id                      Int       @id @default(autoincrement())
-  organizationId          Int
-  branchId                Int
-  createdById             String
-  title                   String
-  description             String?
-  category                String    @default("B")
-  /// draft | published | archived
-  status                  String    @default("draft")
-  questionCount           Int
-  timeLimitSeconds        Int
-  passingThresholdPercent Int
-  availableFrom           DateTime?
-  availableUntil          DateTime?
-  retryLimit              Int       @default(1)
-  shuffleQuestions        Boolean   @default(true)
-  shuffleOptions          Boolean   @default(false)
-  answerReviewTiming      String    @default("after_submit")
-  /// Tartiblangan savol id'lari.
-  questionIds             Int[]
-  publishedAt             DateTime?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-
-  assignments TestAssignment[]
-
-  @@index([organizationId, branchId])
-}
-
-model TestAssignment {
+/// Test yoki imtihon (savollar bilan, avtomatik baholanadi).
+model Quiz {
   id             Int       @id @default(autoincrement())
-  templateId     Int
   organizationId Int
-  branchId       Int
+  courseId       Int?
   groupId        Int?
-  studentId      Int?
-  assignedById   String
-  availableFrom  DateTime?
-  availableUntil DateTime?
+  title          String
+  description    String?
+  /// quiz | exam
+  kind           String    @default("quiz")
+  durationMin    Int?
+  /// O'tish chegarasi, foizda.
+  passPercent    Int       @default(60)
+  maxAttempts    Int       @default(1)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  /// draft | published | closed
+  status         String    @default("draft")
+  createdByName  String?
+  deleted_at     DateTime?
   created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
-  template TestTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  course    Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  group     Group?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
 
-  @@index([templateId])
+  @@index([organizationId, created_at])
+  @@index([courseId])
+  @@index([groupId])
+}
+
+model QuizQuestion {
+  id         Int      @id @default(autoincrement())
+  quizId     Int
+  text       String
+  /// single | multiple | text
+  type       String   @default("single")
+  /// Variantlar matni: string[]
+  options    Json     @default("[]")
+  /// single/multiple: to'g'ri variant indekslari (number[]); text: qabul qilinadigan javoblar (string[])
+  correct    Json     @default("[]")
+  points     Int      @default(1)
+  position   Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, position])
+}
+
+/// Test natijasi (bitta urinish).
+model QuizAttempt {
+  id           Int       @id @default(autoincrement())
+  quizId       Int
+  studentId    Int
+  answers      Json      @default("{}")
+  score        Float     @default(0)
+  maxScore     Float     @default(0)
+  percent      Float     @default(0)
+  passed       Boolean   @default(false)
+  /// graded | needs_review
+  status       String    @default("graded")
+  feedback     String?
+  gradedByName String?
+  submittedAt  DateTime  @default(now())
+  created_at   DateTime  @default(now())
+
+  quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, studentId])
+  @@index([studentId])
 }

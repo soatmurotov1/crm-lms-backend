@@ -54,7 +54,7 @@ export function courseTypeOf(row: {
     row.course?.type ??
     group?.course?.type ??
     group?.courseType ??
-    CourseType.AUTO_SCHOOL
+    CourseType.OFFLINE
   );
 }
 

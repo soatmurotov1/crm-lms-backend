@@ -21,12 +21,7 @@ type OptionKind =
   | 'groups'
   | 'custodians'
   | 'teachers'
-  | 'students'
-  | 'programs'
-  | 'stations'
-  | 'vehicles'
-  | 'questions'
-  | 'enrollments';
+  | 'students';
 
 /** Qaysi yozish formasi qaysi tanlovlarni ko'radi. */
 const OPTIONS: Record<string, OptionKind[]> = {
@@ -38,20 +33,8 @@ const OPTIONS: Record<string, OptionKind[]> = {
   attendance: ['groups'],
   payments: ['students'],
   leads: ['groups', 'custodians'],
-  vehicles: ['custodians'],
-  vehicle_documents: [],
-  vehicle_maintenance: [],
-  vehicle_transfers: [],
-  vehicle_inspections: ['vehicles', 'custodians'],
-  fuel: ['vehicles', 'stations'],
-  fuel_stations: [],
-  expenses: ['vehicles', 'teachers'],
-  training_programs: ['courses'],
-  training_enrollments: ['students', 'programs'],
-  driving_sessions: ['enrollments', 'vehicles', 'teachers'],
-  questions: [],
-  test_templates: ['questions', 'groups', 'students'],
-  test_assignments: ['groups', 'students'],
+  expenses: ['teachers'],
+  documents: ['students', 'groups'],
 };
 
 const DEFAULT_LIMIT = 50;
@@ -269,100 +252,6 @@ export class V2OptionsService {
                 phone_last4: row.phone.slice(-4),
                 total_price: balance?.totalPrice.toNumber() ?? 0,
                 amount_paid: balance?.paid.toNumber() ?? 0,
-              };
-            });
-            break;
-          }
-          case 'programs': {
-            const rows = await this.prisma.trainingProgram.findMany({
-              where: { ...org, ...branch, isActive: true },
-              orderBy: { name: 'asc' },
-            });
-            result.programs = rows.map((row) => ({
-              id: toId(row.id),
-              name: row.name,
-              branch_id: toId(row.branchId),
-              required_minutes: row.requiredMinutes,
-              category: row.category,
-            }));
-            break;
-          }
-          case 'stations': {
-            const rows = await this.prisma.fuelStation.findMany({
-              where: { ...org, ...branch, active: true },
-              orderBy: { name: 'asc' },
-            });
-            result.stations = rows.map((row) => ({
-              id: toId(row.id),
-              name: row.name,
-              branch_id: toId(row.branchId),
-              stir: row.stir,
-            }));
-            break;
-          }
-          case 'vehicles': {
-            const rows = await this.prisma.vehicle.findMany({
-              where: { ...org, ...branch, status: { not: 'retired' } },
-              orderBy: { plateNumber: 'asc' },
-            });
-            result.vehicles = rows.map((row) => ({
-              id: toId(row.id),
-              plate_number: row.plateNumber,
-              branch_id: toId(row.branchId),
-              current_custodian_id: row.currentCustodianId,
-              model: row.model,
-              fuel_types: row.fuelTypes,
-              available_for_booking: row.status === 'active',
-              categories: row.categories,
-            }));
-            break;
-          }
-          case 'questions': {
-            const rows = await this.prisma.question.findMany({
-              where: {
-                status: 'published',
-                OR: [{ visibility: 'platform_public' }, { ...org }],
-              },
-              select: { id: true, topic: true, visibility: true },
-              orderBy: { id: 'desc' },
-              take: 500,
-            });
-            result.questions = rows.map((row) => ({
-              id: toId(row.id),
-              topic: row.topic,
-              visibility: row.visibility,
-            }));
-            break;
-          }
-          case 'enrollments': {
-            const rows = await this.prisma.trainingEnrollment.findMany({
-              where: { ...org, ...branch, status: 'active' },
-              select: {
-                id: true,
-                studentId: true,
-                program: { select: { id: true, name: true } },
-              },
-              orderBy: { id: 'desc' },
-              take: 500,
-            });
-            const students = await this.prisma.student.findMany({
-              where: { id: { in: rows.map((row) => row.studentId) } },
-              select: { id: true, fullName: true, firstName: true, lastName: true },
-            });
-            const byId = new Map(students.map((row) => [row.id, row]));
-            result.enrollments = rows.map((row) => {
-              const student = byId.get(row.studentId);
-              const name = splitName(student?.fullName ?? '');
-              return {
-                id: toId(row.id),
-                student: {
-                  id: toId(row.studentId),
-                  first_name: student?.firstName ?? name.first,
-                  last_name: student?.lastName ?? name.last,
-                },
-                program: row.program
-                  ? { id: toId(row.program.id), title: row.program.name }
-                  : null,
               };
             });
             break;

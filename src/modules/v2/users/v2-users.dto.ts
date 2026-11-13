@@ -34,7 +34,6 @@ export const ROLES = [
   'operator',
   'teacher',
 ] as const;
-const SPECIALIZATIONS = ['THEORY', 'PRACTICE'] as const;
 
 const phone = ({ value }: { value: unknown }) =>
   typeof value === 'string' && value.trim() ? normalizePhone(value) : undefined;
@@ -94,7 +93,7 @@ export class V2CreateUserDto {
   @IsString()
   branchId?: string;
 
-  @ApiPropertyOptional({ example: 'manager@autodrive.uz' })
+  @ApiPropertyOptional({ example: 'manager@educrm.uz' })
   @IsOptional()
   @Transform(email)
   @IsEmail({}, { message: 'Email noto‘g‘ri' })
@@ -129,10 +128,12 @@ export class V2CreateUserDto {
   @IsIn(ROLES, { message: 'Rol noto‘g‘ri' })
   role: V2Role;
 
-  @ApiPropertyOptional({ enum: SPECIALIZATIONS })
+  @ApiPropertyOptional({ example: 'Matematika', description: 'Fan / mutaxassislik' })
   @IsOptional()
-  @IsIn(SPECIALIZATIONS)
-  specialization?: (typeof SPECIALIZATIONS)[number];
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  specialization?: string;
 }
 
 export class V2UpdateUserDto {
@@ -162,10 +163,12 @@ export class V2UpdateUserDto {
   @IsEmail({}, { message: 'Email noto‘g‘ri' })
   email?: string;
 
-  @ApiPropertyOptional({ enum: SPECIALIZATIONS })
+  @ApiPropertyOptional({ example: 'Matematika', description: 'Fan / mutaxassislik' })
   @IsOptional()
-  @IsIn(SPECIALIZATIONS)
-  specialization?: (typeof SPECIALIZATIONS)[number];
+  @Transform(trim)
+  @IsString()
+  @MaxLength(100)
+  specialization?: string;
 }
 
 class V2BranchMembershipDto {
@@ -257,11 +260,11 @@ export class V2WriteOptionsQueryDto {
   @MaxLength(100)
   search?: string;
 
-  @ApiPropertyOptional({ enum: ['tezkor', 'avto_maktab'] })
+  @ApiPropertyOptional({ enum: ['online', 'offline'] })
   @IsOptional()
   @Transform(emptyToUndefined)
-  @IsIn(['tezkor', 'avto_maktab'])
-  course_type?: 'tezkor' | 'avto_maktab';
+  @IsIn(['online', 'offline'])
+  course_type?: 'online' | 'offline';
 
   @ApiPropertyOptional()
   @IsOptional()

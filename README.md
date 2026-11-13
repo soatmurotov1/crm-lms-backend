@@ -1,4 +1,38 @@
-# O'quv markazi boshqaruv tizimi API dokumentatsiyasi
+# EduLMS — backend
+
+NestJS 11 + Prisma 7 + PostgreSQL. Frontend `/api/v2/*` endpointlari bilan ishlaydi;
+eski `/api/*` endpointlari (mobil ilova / o'quvchi portali) saqlanib qolgan.
+Ishga tushirish — loyiha ildizidagi `README.md`. Interaktiv hujjat: `http://localhost:4040/api` (Swagger).
+
+## LMS endpointlari (`/api/v2`)
+
+| Resurs | Endpointlar |
+| --- | --- |
+| Fanlar | `GET/POST /subjects`, `GET/PATCH/DELETE /subjects/:id` (search, parent_id, pagination) |
+| O'quv dasturi | `GET /courses/:id/curriculum`, `POST /courses/:id/modules`, `PATCH/DELETE /modules/:id`, `POST /modules/:id/lessons`, `GET/PATCH/DELETE /course-lessons/:id`, `POST /course-lessons/:id/materials` (multipart yoki URL), `GET /materials/:id/download`, `DELETE /materials/:id`, `POST /course-lessons/:id/progress` |
+| Kursga yozish | `GET/POST /courses/:id/enrollments`, `DELETE /courses/:id/enrollments/:studentId`, `GET /courses/:id/progress` |
+| Topshiriqlar | `GET/POST /assignments`, `GET/PATCH/DELETE /assignments/:id`, `GET/POST /assignments/:id/submissions`, `PATCH /submissions/:id/grade`, `GET /submissions/:id/download` |
+| Testlar / imtihonlar | `GET/POST /exams`, `GET/PATCH/DELETE /exams/:id`, `POST /exams/:id/questions`, `PUT/DELETE /exams/:id/questions/:qid`, `POST /exams/:id/attempts`, `GET /exams/:id/results`, `PATCH /exam-attempts/:id/review` |
+| Baholar, progress | `GET /grades`, `GET /progress/students/:id`, `GET /progress/courses/:id`, `GET /lms/summary` |
+| Bildirishnomalar | `GET/POST /notifications`, `GET /notifications/unread-count`, `POST /notifications/read-all`, `PATCH /notifications/:id/read`, `DELETE /notifications/:id` |
+| Fayllar | `POST /uploads`, `GET /uploads/:id` |
+
+Mavjud: `auth`, `branches`, `courses`, `groups`, `students`, `payments`, `lessons`, `attendance`,
+`schedule`, `users`, `permissions`, `audit-logs`, `dashboard`, `search`, `leads`, `expenses`, `documents`, `telegram`.
+
+RBAC: `@V2Roles` + `@V2Permission` (`src/modules/v2/common/v2-permissions.ts`). O'qituvchi LMS yozuvlarini faqat o'z guruhlarida o'zgartiradi.
+
+## Testlar
+
+```bash
+npm test                              # jest
+node scripts/lms-smoke-test.mjs       # ishlab turgan API'ga qarshi to'liq LMS oqimi
+```
+
+---
+
+## Eski hujjat (`/api/*`, avvalgi panel)
+
 
 ## Ma'lumotlar bazasi strukturasi (PostgreSQL jadvallar)
 

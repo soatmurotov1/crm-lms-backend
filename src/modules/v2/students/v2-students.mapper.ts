@@ -32,7 +32,6 @@ export const STUDENT_SELECT = {
   lifecycle: true,
   result: true,
   hasDocument: true,
-  o83: true,
   contractNumber: true,
   notes: true,
   startDate: true,
@@ -181,7 +180,6 @@ export class V2StudentMapper {
       ...(row.completionDate
         ? { completion_date: dateKey(row.completionDate) }
         : {}),
-      o83: row.o83,
       ...(row.contractNumber ? { contract_number: row.contractNumber } : {}),
       ...(row.startDate ? { start_date: dateKey(row.startDate) } : {}),
       ...(row.leadSource ? { lead_source: row.leadSource } : {}),

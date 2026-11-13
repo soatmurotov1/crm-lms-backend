@@ -18,7 +18,7 @@ import {
 } from '../common/v2-dto.util';
 import type { V2CourseType } from '../common/v2.mapper';
 
-const COURSE_TYPES = ['tezkor', 'avto_maktab'];
+const COURSE_TYPES = ['online', 'offline'];
 
 export class V2GroupsQueryDto {
   @ApiPropertyOptional()
@@ -66,7 +66,7 @@ export class V2CreateGroupDto {
   @IsNotEmpty({ message: 'Filialni tanlang' })
   branchId: string;
 
-  @ApiProperty({ enum: COURSE_TYPES, default: 'avto_maktab' })
+  @ApiProperty({ enum: COURSE_TYPES, default: 'offline' })
   @IsIn(COURSE_TYPES, { message: 'Noto‘g‘ri kurs turi' })
   courseType: V2CourseType;
 
@@ -83,6 +83,13 @@ export class V2CreateGroupDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   teacherId?: string | null;
+
+  @ApiPropertyOptional({ description: 'Kurs (LMS o‘quv dasturi); null — biriktirilmagan' })
+  @IsOptional()
+  @Transform(emptyToNull)
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  courseId?: string | null;
 }
 
 export class V2UpdateGroupDto {
@@ -111,4 +118,11 @@ export class V2UpdateGroupDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   teacherId?: string | null;
+
+  @ApiPropertyOptional({ description: 'Kurs (LMS o‘quv dasturi); null — biriktirilmagan' })
+  @IsOptional()
+  @Transform(emptyToNull)
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  courseId?: string | null;
 }
