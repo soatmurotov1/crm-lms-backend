@@ -68,3 +68,24 @@ export function setSessionCookie(
 export function clearSessionCookie(res: Response): void {
   res.clearCookie(V2_SESSION_COOKIE, cookieOptions());
 }
+
+/**
+ * O'quvchi kabineti sessiyasi — xodim sessiyasidan alohida cookie, shunda bitta
+ * brauzerda xodim va o'quvchi bir-birining sessiyasini buzmaydi.
+ */
+export const V2_LEARNER_COOKIE = 'learner_session';
+
+export function setLearnerCookie(
+  res: Response,
+  token: string,
+  expiresAt: Date,
+): void {
+  res.cookie(V2_LEARNER_COOKIE, token, {
+    ...cookieOptions(),
+    expires: expiresAt,
+  });
+}
+
+export function clearLearnerCookie(res: Response): void {
+  res.clearCookie(V2_LEARNER_COOKIE, cookieOptions());
+}

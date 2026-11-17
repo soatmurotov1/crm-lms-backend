@@ -21,6 +21,21 @@ async function bootstrap() {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.removeHeader('X-Powered-By');
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+    );
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+
+    // JSON API hech qachon HTML/skript bermaydi — javob qandaydir yo'l bilan
+    // brauzerda ochilsa ham skript ishlamasin (XSS). Swagger UI (/api) bundan
+    // mustasno, unga o'z skriptlari kerak.
+    if (/^\/api\/(v2|auth|payments)(\/|$)/.test(_req.path)) {
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'none'; frame-ancestors 'none'; sandbox",
+      );
+    }
 
     if (IS_PRODUCTION) {
       res.setHeader(
@@ -89,6 +104,17 @@ async function bootstrap() {
   app.enableShutdownHooks();
   const PORT = Number(process.env.PORT) || 4041;
   const NODE_ENV = process.env.NODE_ENV || 'development';
+
+  /*
+    Slowloris kabi sekin-ulanish (DoS) hujumlariga qarshi: sarlavhalarni yoki
+    so'rov tanasini juda sekin yuborib, server ulanishlarini band qilib
+    turishga yo'l qo'yilmaydi.
+  */
+  const server = app.getHttpServer() as import('node:http').Server;
+  server.headersTimeout = 20_000;
+  server.requestTimeout = 120_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxHeadersCount = 100;
 
   await app.listen(PORT, () => {
     const worker = cluster.worker ? ` (worker ${cluster.worker.id})` : '';

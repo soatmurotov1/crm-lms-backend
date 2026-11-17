@@ -21,7 +21,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:reset": "prisma migrate reset --force",
-    "prisma:seed": "node prisma/seed.mjs"
+    "prisma:seed": "node prisma/seed.mjs",
+    "seed:demo": "node prisma/seed-demo.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.16",
@@ -42,9 +43,8 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
-    "cloudinary": "^1.41.3",
+    "cloudinary": "^2.11.0",
     "dotenv": "^16.6.1",
-    "multer-storage-cloudinary": "^4.0.0",
     "nestjs-pino": "^4.6.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

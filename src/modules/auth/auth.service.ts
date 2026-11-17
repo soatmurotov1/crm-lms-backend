@@ -9,6 +9,10 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtService } from '@nestjs/jwt';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
+import {
+  accountLockout,
+  burnPasswordCheck,
+} from 'src/common/utils/account-lockout';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { Role, UserStatus, VerificationPurpose } from '@prisma/client';
 import { normalizePhone } from 'src/common/utils/phone.util';
@@ -290,11 +294,17 @@ export class AuthService {
       where: { phone },
     });
 
-    if (!existUser) {
+    const lockKey = `legacy-user:${phone}`;
+    accountLockout.assertNotLocked(lockKey);
+
+    if (!existUser || existUser.deleted_at) {
+      await burnPasswordCheck(payload.password);
+      accountLockout.recordFailure(lockKey);
       throw new BadRequestException('Telefon raqami yoki parol xato');
     }
 
     if (!(await comparePassword(payload.password, existUser.password))) {
+      accountLockout.recordFailure(lockKey);
       await this.logFailedLogin(
         phone,
         context,
@@ -303,6 +313,8 @@ export class AuthService {
       );
       throw new BadRequestException('Telefon raqami yoki parol xato');
     }
+
+    accountLockout.recordSuccess(lockKey);
 
     await this.ensureAccountIsActive(
       existUser.status,
@@ -347,11 +359,17 @@ export class AuthService {
       where: { phone },
     });
 
-    if (!existTeacher) {
+    const lockKey = `legacy-teacher:${phone}`;
+    accountLockout.assertNotLocked(lockKey);
+
+    if (!existTeacher || existTeacher.deleted_at) {
+      await burnPasswordCheck(payload.password);
+      accountLockout.recordFailure(lockKey);
       throw new BadRequestException('Login or password wrong');
     }
 
     if (!(await comparePassword(payload.password, existTeacher.password))) {
+      accountLockout.recordFailure(lockKey);
       await this.logFailedLogin(
         phone,
         context,
@@ -360,6 +378,8 @@ export class AuthService {
       );
       throw new BadRequestException('Login or password wrong');
     }
+
+    accountLockout.recordSuccess(lockKey);
 
     await this.ensureAccountIsActive(
       existTeacher.status,
@@ -411,10 +431,16 @@ export class AuthService {
       where: { phone },
     });
 
-    if (!existStudent) {
+    const lockKey = `legacy-student:${phone}`;
+    accountLockout.assertNotLocked(lockKey);
+
+    if (!existStudent || existStudent.deleted_at) {
+      await burnPasswordCheck(payload.password);
+      accountLockout.recordFailure(lockKey);
       throw new BadRequestException('Login or password wrong');
     }
     if (!(await comparePassword(payload.password, existStudent.password))) {
+      accountLockout.recordFailure(lockKey);
       await this.logFailedLogin(
         phone,
         context,
@@ -423,6 +449,8 @@ export class AuthService {
       );
       throw new BadRequestException('Login or password wrong');
     }
+
+    accountLockout.recordSuccess(lockKey);
 
     await this.ensureAccountIsActive(
       existStudent.status,

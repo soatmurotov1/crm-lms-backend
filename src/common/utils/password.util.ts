@@ -1,11 +1,13 @@
-export function generateRandomPassword(length: number = 8): string {
-  const chars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+import { randomInt } from 'node:crypto';
 
-  const password = Array.from(
-    { length },
-    () => chars[Math.floor(Math.random() * chars.length)],
-  ).join('');
+const CHARS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
 
-  return password;
+/**
+ * Tasodifiy parol. `Math.random()` kriptografik emas — uning holatini bir
+ * nechta natijadan tiklab, keyingi parollarni oldindan aytib berish mumkin.
+ * Shuning uchun `crypto.randomInt` (CSPRNG) ishlatiladi.
+ */
+export function generateRandomPassword(length: number = 12): string {
+  return Array.from({ length }, () => CHARS[randomInt(CHARS.length)]).join('');
 }

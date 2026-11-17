@@ -63,6 +63,10 @@ import { LMS_CONTROLLERS } from './lms/lms.controllers';
 import { LmsNotificationsService } from './lms/notifications.service';
 import { LmsQuizzesService } from './lms/quizzes.service';
 import { LmsSubjectsService } from './lms/subjects.service';
+import { LearnerAuthService } from './learner/learner-auth.service';
+import { LEARNER_CONTROLLERS } from './learner/learner.controllers';
+import { LearnerGuard } from './learner/learner.guard';
+import { LearnerService } from './learner/learner.service';
 
 /**
  * `/api/v2` — LMS platformasi frontendi (`frontend`) uchun API.
@@ -100,6 +104,8 @@ import { LmsSubjectsService } from './lms/subjects.service';
     V2DocumentsController,
     // LMS
     ...LMS_CONTROLLERS,
+    // O'quvchi kabineti
+    ...LEARNER_CONTROLLERS,
   ],
   providers: [
     // Umumiy qatlam
@@ -132,6 +138,9 @@ import { LmsSubjectsService } from './lms/subjects.service';
     // LMS
     LmsAccessService,
     LmsSubjectsService,
+    LearnerAuthService,
+    LearnerService,
+    LearnerGuard,
     LmsCurriculumService,
     LmsAssignmentsService,
     LmsQuizzesService,

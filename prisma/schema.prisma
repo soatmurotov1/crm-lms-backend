@@ -264,9 +264,9 @@ model Student {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  branch            Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  course            Course?            @relation("StudentCourse", fields: [courseId], references: [id], onDelete: SetNull)
+  organization      Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  branch            Branch?                @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  course            Course?                @relation("StudentCourse", fields: [courseId], references: [id], onDelete: SetNull)
   studentGroups     StudentGroup[]
   payments          Payment[]
   attendances       Attendance[]
@@ -303,13 +303,13 @@ model Course {
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
 
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  branch       Branch?       @relation("CourseBranch", fields: [branchId], references: [id], onDelete: SetNull)
-  subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  branch       Branch?        @relation("CourseBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  subject      Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   modules      CourseModule[]
   assignments  Assignment[]
   quizzes      Quiz[]
-  students     Student[]     @relation("StudentCourse")
+  students     Student[]      @relation("StudentCourse")
   groups       Group[]
   payments     Payment[]
   exams        Exam[]
@@ -713,16 +713,18 @@ model ExamResult {
 }
 
 model Organization {
-  id           Int      @id @default(autoincrement())
-  name         String   @unique
-  phone        String?
-  address      String?
-  logo         String?
-  directorName String?
-  description  String?
-  status       Status   @default(ACTIVE)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  phone         String?
+  address       String?
+  logo          String?
+  directorName  String?
+  description   String?
+  status        Status   @default(ACTIVE)
+  /// O'quvchi kabineti bo'limlari: { enabled, schedule, courses, ... }. Bo'sh — hammasi yoqilgan.
+  learnerPortal Json?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   users          User[]
   subscriptions  Subscription[]
@@ -1438,20 +1440,20 @@ model QuizQuestion {
 
 /// Test natijasi (bitta urinish).
 model QuizAttempt {
-  id           Int       @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   quizId       Int
   studentId    Int
-  answers      Json      @default("{}")
-  score        Float     @default(0)
-  maxScore     Float     @default(0)
-  percent      Float     @default(0)
-  passed       Boolean   @default(false)
+  answers      Json     @default("{}")
+  score        Float    @default(0)
+  maxScore     Float    @default(0)
+  percent      Float    @default(0)
+  passed       Boolean  @default(false)
   /// graded | needs_review
-  status       String    @default("graded")
+  status       String   @default("graded")
   feedback     String?
   gradedByName String?
-  submittedAt  DateTime  @default(now())
-  created_at   DateTime  @default(now())
+  submittedAt  DateTime @default(now())
+  created_at   DateTime @default(now())
 
   quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)

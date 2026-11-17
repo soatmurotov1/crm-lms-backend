@@ -25,6 +25,6 @@ export class SetPasswordDto {
 
   @ApiProperty({ example: 'yangiParol123' })
   @IsString()
-  @MinLength(6, { message: "Parol kamida 6 belgidan iborat bo'lishi kerak" })
+  @MinLength(8, { message: "Parol kamida 8 belgidan iborat bo'lishi kerak" })
   password: string;
 }

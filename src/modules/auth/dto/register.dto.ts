@@ -31,7 +31,7 @@ export class RegisterDto {
 
   @ApiProperty({ example: 'parol123' })
   @IsString()
-  @MinLength(6, { message: "Parol kamida 6 ta belgidan iborat bo'lsin" })
+  @MinLength(8, { message: "Parol kamida 8 ta belgidan iborat bo'lsin" })
   password: string;
 
   @ApiProperty({

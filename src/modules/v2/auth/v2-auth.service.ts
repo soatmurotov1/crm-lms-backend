@@ -9,6 +9,10 @@ import { JwtService } from '@nestjs/jwt';
 import { Role, Status, UserStatus } from '@prisma/client';
 import { comparePassword, hashPassword } from 'src/common/bcrypt/bcrypt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
+import {
+  accountLockout,
+  burnPasswordCheck,
+} from 'src/common/utils/account-lockout';
 import { SessionService } from 'src/common/session/session.service';
 import {
   parseStoredAccess,
@@ -96,17 +100,26 @@ export class V2AuthService {
     payload: V2LoginDto,
     context: V2RequestContext = {},
   ): Promise<V2AuthResult> {
+    const lockKey = `staff:${payload.email}`;
+    accountLockout.assertNotLocked(lockKey);
+
     const account = await this.findByEmail(payload.email);
 
-    // Hisob yo'qligi va parol xatoligi tashqaridan bir xil ko'rinadi.
+    // Hisob yo'qligi va parol xatoligi tashqaridan bir xil ko'rinadi —
+    // javob vaqti ham (bcrypt baribir bajariladi).
     if (!account || account.deleted_at) {
+      await burnPasswordCheck(payload.password);
+      accountLockout.recordFailure(lockKey);
       throw new UnauthorizedException(WRONG_CREDENTIALS);
     }
 
     if (!(await comparePassword(payload.password, account.password))) {
+      accountLockout.recordFailure(lockKey);
       await this.logLogin(account, context, false);
       throw new UnauthorizedException(WRONG_CREDENTIALS);
     }
+
+    accountLockout.recordSuccess(lockKey);
 
     if (account.status !== UserStatus.ACTIVE) {
       await this.logLogin(account, context, false);
